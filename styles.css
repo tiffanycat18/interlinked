@@ -1,0 +1,78 @@
+@font-face {
+  font-family: "Kommuna";
+  src: url("Kommuna-Normal.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Janda";
+  src: url("Janda.ttf") format("truetype");
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #ffffff;
+  color: #000000;
+  font-family: "Kommuna";
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+}
+
+.label {
+  font-family: "Janda";
+  font-size: 32px;
+  color: #ff1900;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 36px;
+  margin-bottom: 20px;
+}
+
+.stamp {
+  padding: 10px 0;
+  margin-bottom: 20px;
+}
+
+.stamp p {
+  margin: 6px 0;
+  line-height: 1.6;
+}
+
+#datetime {
+  font-size: 18px;
+}
+
+#weather {
+  color: #000000;
+}
+
+#poem {
+  font-style: italic;
+  color: #000000;
+}
+
+button {
+  font-family: "Janda";
+  font-size: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.status {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #000000;
+}
