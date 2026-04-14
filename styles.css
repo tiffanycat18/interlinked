@@ -384,9 +384,10 @@ body {
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.55);
-  font-family: 'Jellyka Handwriting';
+  font-family: 'Kommuna';
+  text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 2.78rem;
+  font-size: 0.98rem;
   font-weight: 100;
   padding: 0;
   cursor: pointer;
