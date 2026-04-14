@@ -132,7 +132,7 @@ function initHost() {
   });
 
   S.peer.on('error', e => {
-    setBadge('error', 'Error — try refreshing');
+    setBadge('error', 'Error. Try refreshing');
     console.warn(e);
   });
 
