@@ -1,116 +1,810 @@
-const datetimeEl = document.getElementById("datetime");
-const weatherEl = document.getElementById("weather");
-const poemEl = document.getElementById("poem");
-const statusEl = document.getElementById("status");
-const loadBtn = document.getElementById("loadBtn");
+const PROMPTS = [
+  {
+    act: 'Act I',
+    text: 'Look into the lens.\nRelax your face.',
+    sub: 'Keep it simple'
+  },
+  {
+    act: 'Act II',
+    text: 'Shift your body slightly.\nKeep your eyes soft.',
+    sub: 'Let it feel natural'
+  },
+  {
+    act: 'Act III',
+    text: 'Look away for a second.\nLike you’re thinking of something.',
+    sub: 'Keep it effortless'
+  },
+  {
+    act: 'Act IV',
+    text: 'Do something a little unexpected.\nMake it memorable.',
+    sub: 'One last moment'
+  }
+];
+const S = {
+  code: null,
+  isDuet: false,
+  isHost: false,
+  idx: 0,
+  photosYou: [],
+  photosPartner: [],
+  localStream: null,
+  peer: null,
+  conn: null,
+  call: null,
+  youReady: false,
+  partnerReady: false,
+  orient: 'vert',
+  stamp: null
+};
 
-function formatDateTime() {
-  const now = new Date();
-
-  const date = now.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric"
-  });
-
-  const time = now.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit"
-  });
-
-  return `${date}, ${time}`;
+/* ── NAV ── */
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-async function loadWeather(lat, lon) {
+function goToSession() {
+  show('s-session');
+}
+
+function genCode() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 4 }, () => c[Math.floor(Math.random() * c.length)]).join('');
+}
+
+/* ── ORIENTATION PICKER ── */
+function pickOrient(o) {
+  S.orient = o;
+  document.getElementById('oc-horiz').classList.toggle('selected', o === 'horiz');
+  document.getElementById('oc-vert').classList.toggle('selected', o === 'vert');
+}
+
+function confirmOrient() {
+  beginShoot();
+}
+
+/* ── SESSION FLOWS ── */
+function startSolo() {
+  S.code = 'SOLO';
+  S.isDuet = false;
+  S.isHost = false;
+  show('s-orient');
+}
+
+function createSession() {
+  S.code = genCode();
+  S.isDuet = true;
+  S.isHost = true;
+  document.getElementById('wait-code').textContent = S.code;
+  setBadge('waiting', 'Initialising…');
+  show('s-waiting');
+  initHost();
+}
+
+function joinSession() {
+  const v = document.getElementById('join-input').value.trim().toUpperCase();
+  if (v.length < 3) {
+    alert('Enter a valid 4-character code');
+    return;
+  }
+  S.code = v;
+  S.isDuet = true;
+  S.isHost = false;
+  document.getElementById('wait-code').textContent = S.code;
+  setBadge('waiting', 'Connecting…');
+  show('s-waiting');
+  initGuest();
+}
+
+function cancelWait() {
+  cleanup();
+  show('s-session');
+}
+
+function setBadge(state, txt) {
+  document.getElementById('conn-badge').className = 'conn-badge ' + state;
+  document.getElementById('conn-txt').textContent = txt;
+}
+
+/* ── PEERJS HOST ── */
+function initHost() {
+  S.peer = new Peer('interlinked-host-' + S.code, { debug: 0 });
+
+  S.peer.on('open', () => setBadge('waiting', 'Waiting for partner…'));
+
+  S.peer.on('connection', conn => {
+    S.conn = conn;
+
+    conn.on('open', () => {
+      setBadge('connected', 'Partner connected ✦');
+      conn.on('data', handleData);
+      // Go to orientation pick, then shoot will be triggered
+      show('s-orient');
+    });
+
+    conn.on('close', () => setBadge('error', 'Partner disconnected'));
+  });
+
+  S.peer.on('call', call => {
+    S.call = call;
+    call.answer(S.localStream || undefined);
+    call.on('stream', remote => showPartnerVid(remote));
+  });
+
+  S.peer.on('error', e => {
+    setBadge('error', 'Error — try refreshing');
+    console.warn(e);
+  });
+
+  getCamera();
+}
+
+/* ── PEERJS GUEST ── */
+function initGuest() {
+  const hostId = 'interlinked-host-' + S.code;
+  const guestId = 'interlinked-guest-' + S.code + '-' + Date.now();
+  S.peer = new Peer(guestId, { debug: 0 });
+
+  S.peer.on('open', async () => {
+    S.conn = S.peer.connect(hostId, { reliable: true });
+
+    S.conn.on('open', () => {
+      setBadge('connected', 'Connected ✦');
+      S.conn.on('data', handleData);
+    });
+
+    S.conn.on('error', () => setBadge('error', 'Cannot reach host — check code'));
+
+    await getCamera();
+
+    if (S.localStream) {
+      S.call = S.peer.call(hostId, S.localStream);
+      S.call.on('stream', remote => showPartnerVid(remote));
+    }
+  });
+
+  S.peer.on('error', e => {
+    setBadge('error', 'Cannot connect — check code');
+    console.warn(e);
+  });
+}
+
+/* ── CAMERA ── */
+async function getCamera() {
   try {
-    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
-
-    const response = await fetch(weatherUrl);
-    console.log("Weather response:", response);
-
-    if (!response.ok) {
-      throw new Error(`Weather request failed: ${response.status}`);
+    if (S.localStream) {
+      S.localStream.getTracks().forEach(t => t.stop());
     }
 
-    const data = await response.json();
-    console.log("Weather data:", data);
+    S.localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
+      audio: false
+    });
 
-    const temp = Math.round(data.current.temperature_2m);
-    const code = data.current.weather_code;
+    attachMyVid(S.localStream);
 
-    let condition = "Unknown";
-    if (code === 0) condition = "Clear";
-    else if ([1, 2, 3].includes(code)) condition = "Cloudy";
-    else if ([45, 48].includes(code)) condition = "Foggy";
-    else if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) condition = "Rainy";
-    else if ([71, 73, 75, 77, 85, 86].includes(code)) condition = "Snowy";
-    else if ([95, 96, 99].includes(code)) condition = "Stormy";
+    if (!S.isHost && S.peer && S.peer.open && S.conn) {
+      S.call = S.peer.call('interlinked-host-' + S.code, S.localStream);
+      S.call.on('stream', remote => showPartnerVid(remote));
+    }
 
-    weatherEl.textContent = `${condition} · ${temp}°`;
-  } catch (error) {
-    console.error("Weather error:", error);
-    weatherEl.textContent = "Could not load weather.";
+    if (S.isHost && S.call) {
+      S.call.answer(S.localStream);
+    }
+  } catch (e) {
+    console.log('No camera — sim mode');
+    runSimCam('left');
+    document.getElementById('ph-you').style.display = 'none';
   }
 }
 
-async function loadPoem() {
-  try {
-    const poemUrl = "https://poetrydb.org/title/Ozymandias/lines.json";
+function attachMyVid(stream) {
+  const v = document.getElementById('vid-you');
+  v.srcObject = stream;
+  v.style.display = 'block';
+  document.getElementById('ph-you').style.display = 'none';
+}
 
-    const poemResponse = await fetch(poemUrl);
-    console.log("Poem response:", poemResponse);
+function showPartnerVid(stream) {
+  const v = document.getElementById('vid-partner');
+  v.srcObject = stream;
+  v.style.display = 'block';
+  document.getElementById('ph-partner').style.display = 'none';
+  document.getElementById('live-badge').textContent = 'Live ✦';
+}
 
-    if (!poemResponse.ok) {
-      throw new Error(`Poem request failed: ${poemResponse.status}`);
+function runSimCam(side) {
+  const pane = document.getElementById(side === 'left' ? 'cam-left' : 'cam-right');
+  const c = document.createElement('canvas');
+  c.width = 320;
+  c.height = 480;
+  c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:grayscale(100%) contrast(1.2)';
+  pane.appendChild(c);
+
+  let f = 0;
+
+  (function loop() {
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#080808';
+    ctx.fillRect(0, 0, 320, 480);
+
+    for (let i = 0; i < 1500; i++) {
+      const x = Math.random() * 320;
+      const y = Math.random() * 480;
+      const b = (Math.random() * 40 + Math.sin(f * 0.03 + i * 0.01) * 4) | 0;
+      ctx.fillStyle = `rgb(${b},${b},${b})`;
+      ctx.fillRect(x, y, 1, 1);
     }
 
-    const poemData = await poemResponse.json();
-    console.log("Poem data:", poemData);
+    f++;
+    requestAnimationFrame(loop);
+  })();
+}
 
-    if (poemData[0] && poemData[0].lines) {
-      const line = poemData[0].lines[0];
-      poemEl.textContent = `"${line}"`;
+/* ── DATA CHANNEL ── */
+function send(data) {
+  if (S.conn && S.conn.open) {
+    try {
+      S.conn.send(data);
+    } catch (e) {}
+  }
+}
+
+function handleData(d) {
+  if (!d || !d.type) return;
+
+  if (d.type === 'start-shoot') {
+    S.orient = d.orient || 'vert';
+    applyOrientToStage();
+    beginShoot();
+  }
+
+  if (d.type === 'countdown') showCD(d.n);
+  if (d.type === 'capture-now') captureMe();
+
+  if (d.type === 'partner-ready') {
+    S.partnerReady = true;
+    document.getElementById('sync-partner').classList.add('ready');
+    if (S.youReady) kick();
+  }
+
+  if (d.type === 'photo') {
+    S.photosPartner.push(d.data);
+    checkNext();
+  }
+}
+
+/* ── SHOOT ── */
+async function beginShoot() {
+  S.idx = 0;
+  S.photosYou = [];
+  S.photosPartner = [];
+  S.youReady = false;
+  S.partnerReady = false;
+
+  applyOrientToStage();
+  show('s-shoot');
+  setPrompt(0);
+
+  if (!S.localStream) {
+    await getCamera();
+  } else {
+    attachMyVid(S.localStream);
+  }
+
+  if (S.isHost && S.isDuet) {
+    send({ type: 'start-shoot', orient: S.orient });
+  }
+}
+
+function applyOrientToStage() {
+  const stage = document.getElementById('cam-stage');
+  const camRight = document.getElementById('cam-right');
+  const camLeft = document.getElementById('cam-left');
+  const syncBar = document.getElementById('sync-bar');
+
+  // Remove old classes
+  stage.classList.remove('horiz', 'vert', 'solo');
+
+  if (!S.isDuet) {
+    stage.classList.add(S.orient === 'horiz' ? 'horiz' : 'vert', 'solo');
+    camRight.style.display = 'none';
+    syncBar.style.display = 'none';
+    document.getElementById('lbl-you').textContent = 'Solo';
+  } else {
+    stage.classList.add(S.orient === 'horiz' ? 'horiz' : 'vert');
+    camRight.style.display = '';
+    syncBar.style.display = '';
+    document.getElementById('lbl-you').textContent = 'You';
+  }
+}
+
+function setPrompt(i) {
+  const p = PROMPTS[i];
+  document.getElementById('p-act').textContent = p.act;
+  document.getElementById('p-txt').textContent = p.text;
+  document.getElementById('p-sub').textContent = p.sub;
+  document.getElementById('sync-ctr').textContent = (i + 1) + ' / 4';
+
+  const btn = document.getElementById('cap-btn');
+  btn.disabled = false;
+  btn.textContent = 'Take Photo';
+
+  document.getElementById('cd-dig').classList.remove('show');
+  document.getElementById('sync-you').classList.remove('ready');
+  document.getElementById('sync-partner').classList.remove('ready');
+
+  S.youReady = false;
+  S.partnerReady = false;
+
+  for (let j = 0; j < 4; j++) {
+    document.getElementById('ps' + j).className = 'ps' + (j < i ? ' done' : j === i ? ' cur' : '');
+  }
+}
+
+function onCapture() {
+  const btn = document.getElementById('cap-btn');
+  btn.disabled = true;
+  btn.textContent = 'Ready…';
+
+  S.youReady = true;
+  document.getElementById('sync-you').classList.add('ready');
+  send({ type: 'partner-ready' });
+
+  if (!S.isDuet || S.partnerReady) {
+    kick();
+  } else {
+    btn.textContent = 'Waiting for partner…';
+  }
+}
+
+function kick() {
+  let n = 3;
+  showCD(n);
+
+  if (S.isHost || !S.isDuet) {
+    send({ type: 'countdown', n });
+  }
+
+  const iv = setInterval(() => {
+    n--;
+
+    if (n > 0) {
+      showCD(n);
+      if (S.isHost || !S.isDuet) send({ type: 'countdown', n });
     } else {
-      poemEl.textContent = "No line arrived.";
+      clearInterval(iv);
+      showCD('✦');
+      if (S.isHost || !S.isDuet) send({ type: 'capture-now' });
+      doFlash();
+      captureMe();
     }
-  } catch (error) {
-    console.error("Poem error:", error);
-    poemEl.textContent = "Could not load poem.";
+  }, 1000);
+}
+
+function showCD(n) {
+  const el = document.getElementById('cd-dig');
+  el.textContent = n;
+  el.classList.remove('show');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+
+  if (n === '✦') {
+    setTimeout(() => el.classList.remove('show'), 700);
   }
 }
 
-async function loadMoment() {
-  datetimeEl.textContent = formatDateTime();
-  weatherEl.textContent = "Loading weather...";
-  poemEl.textContent = "Loading a line...";
-  statusEl.textContent = "Asking for location...";
+function doFlash() {
+  const v = document.getElementById('flash-veil');
+  v.classList.add('flash');
+  setTimeout(() => v.classList.remove('flash'), 90);
+}
 
-  if (!navigator.geolocation) {
-    statusEl.textContent = "Geolocation is not supported in this browser.";
-    weatherEl.textContent = "Could not get location.";
-    poemEl.textContent = "Still, the moment is here.";
+/* ── CAPTURE ── */
+function captureMe() {
+  const vid = document.getElementById('vid-you');
+  const cnv = document.getElementById('cv-you');
+
+  // Use square canvas for both orientations — crop happens via object-fit in strip
+  cnv.width = 480;
+  cnv.height = 480;
+
+  const ctx = cnv.getContext('2d');
+
+  if (vid.srcObject && vid.readyState >= 2) {
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(vid, -480, 0, 480, 480);
+    ctx.restore();
+    bw(ctx, cnv);
+  } else {
+    simFrame(ctx, cnv, S.idx);
+  }
+
+  const url = cnv.toDataURL('image/jpeg', 0.9);
+  S.photosYou.push(url);
+  send({ type: 'photo', data: url });
+
+  if (!S.isDuet) {
+    S.photosPartner.push(null);
+    setTimeout(advance, 380);
     return;
   }
 
-  navigator.geolocation.getCurrentPosition(
-    async (position) => {
-      const lat = position.coords.latitude;
-      const lon = position.coords.longitude;
-
-      statusEl.textContent = "Location found. Loading weather and poem...";
-
-      await loadWeather(lat, lon);
-      await loadPoem();
-
-      statusEl.textContent = "Moment loaded.";
-    },
-    (error) => {
-      console.error("Geolocation error:", error);
-      statusEl.textContent = "Location permission was denied or unavailable.";
-      weatherEl.textContent = "Could not get location.";
-      poemEl.textContent = "A soft line still belongs here.";
-    }
-  );
+  checkNext();
 }
 
-loadBtn.addEventListener("click", loadMoment);
-datetimeEl.textContent = formatDateTime();
+function checkNext() {
+  if (S.photosYou.length > S.idx && (!S.isDuet || S.photosPartner.length > S.idx)) {
+    setTimeout(advance, 380);
+  }
+}
+
+async function advance() {
+  S.idx++;
+  if (S.idx < 4) {
+    setPrompt(S.idx);
+  } else {
+    if (S.localStream) S.localStream.getTracks().forEach(t => t.stop());
+    await runDrop();
+  }
+}
+
+function bw(ctx, cnv) {
+  const id = ctx.getImageData(0, 0, cnv.width, cnv.height);
+  const d = id.data;
+
+  for (let k = 0; k < d.length; k += 4) {
+    const g = d[k] * 0.299 + d[k + 1] * 0.587 + d[k + 2] * 0.114;
+    const v = Math.min(255, Math.max(0, (g - 128) * 1.45 + 128));
+    d[k] = d[k + 1] = d[k + 2] = v;
+  }
+
+  ctx.putImageData(id, 0, 0);
+}
+
+function simFrame(ctx, cnv, idx) {
+  ctx.fillStyle = '#080808';
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+
+  for (let i = 0; i < 2200; i++) {
+    const x = Math.random() * cnv.width;
+    const y = Math.random() * cnv.height;
+    const b = (Math.random() * 38) | 0;
+    ctx.fillStyle = `rgb(${b},${b},${b})`;
+    ctx.fillRect(x, y, 1, 1);
+  }
+
+  ctx.fillStyle = '#252525';
+  ctx.font = 'italic 300 54px Cormorant Garamond,serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(['I', 'II', 'III', 'IV'][idx] || '·', cnv.width / 2, cnv.height / 2);
+}
+
+/* ── TIME + LOCATION STAMP ── */
+async function getStamp() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  const dateStr = now.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  let locationStr = '';
+
+  try {
+    const pos = await new Promise((res, rej) =>
+      navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 })
+    );
+
+    const { latitude: lat, longitude: lon } = pos.coords;
+
+    // Reverse geocode using open-meteo's free geocoding sister: nominatim
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+
+    const geoData = await geoRes.json();
+    const addr = geoData.address || {};
+    const city = addr.city || addr.town || addr.village || addr.county || '';
+    const country = addr.country_code ? addr.country_code.toUpperCase() : '';
+    locationStr = [city, country].filter(Boolean).join(', ');
+  } catch (e) {
+    locationStr = ''; // location denied or failed — just omit
+  }
+
+  return { timeStr, dateStr, locationStr };
+}
+
+/* ── STRIP DROP ── */
+async function runDrop() {
+  show('s-drop');
+
+  const travelWrap = document.getElementById('strip-travel-wrap');
+  const hang = document.getElementById('strip-hang');
+
+  // Reset
+  travelWrap.innerHTML = '';
+  hang.innerHTML = '';
+  travelWrap.classList.remove('drop');
+  travelWrap.style.transition = 'none';
+  travelWrap.style.transform = 'translateY(-100%)';
+  hang.classList.remove('show');
+  document.getElementById('dl-btn').disabled = true;
+  document.getElementById('dl-btn').textContent = 'Developing…';
+
+  // Fetch stamp in parallel with building strip
+  const stampPromise = getStamp();
+
+  const isVert = S.orient === 'vert';
+  const slotW = isVert ? 98 : 138;
+  const slotFH = isVert ? 86 : 56;
+  const hangW = isVert ? 158 : 198;
+  const hangFH = isVert ? 132 : 88;
+
+  const stamp = await stampPromise;
+  S.stamp = stamp;
+
+  travelWrap.innerHTML = makeStrip(slotW, slotFH, stamp);
+  hang.innerHTML = makeStrip(hangW, hangFH, stamp);
+
+  // Force a paint before starting transition
+  travelWrap.getBoundingClientRect();
+
+  // Start the drop — 4s slow mechanical slide
+  requestAnimationFrame(() => {
+    travelWrap.style.transition = 'transform 4s cubic-bezier(.15,.85,.3,1)';
+    travelWrap.classList.add('drop');
+  });
+
+  // Show hanging strip just as drop finishes
+  setTimeout(() => hang.classList.add('show'), 3800);
+
+  // Enable download after animation finishes
+  setTimeout(() => {
+    renderCanvas();
+    document.getElementById('dl-btn').disabled = false;
+    document.getElementById('dl-btn').textContent = 'Download Strip';
+  }, 4000);
+}
+
+function makeStrip(w, fh, stamp) {
+  stamp = stamp || S.stamp || {};
+  const isVert = S.orient === 'vert';
+  const isDuo = S.isDuet;
+  let html = `<div class="strip-paper" style="width:${w}px">`;
+
+  for (let i = 0; i < 4; i++) {
+    const y = S.photosYou[i] || '';
+    const p = S.photosPartner[i] || '';
+    const duo = isDuo && p;
+
+    if (duo) {
+      if (isVert) {
+        html += `<div class="s-frame vert-split" style="height:${fh}px">
+          <div class="s-half"><img src="${y}" style="width:100%;height:${fh / 2}px;object-fit:cover;filter:grayscale(100%) contrast(1.3) brightness(.9)" alt=""></div>
+          <div class="s-hdiv-h"></div>
+          <div class="s-half"><img src="${p}" style="width:100%;height:${fh / 2}px;object-fit:cover;filter:grayscale(100%) contrast(1.3) brightness(.9)" alt=""></div>
+        </div>`;
+      } else {
+        html += `<div class="s-frame" style="height:${fh}px">
+          <div class="s-half" style="height:${fh}px"><img src="${y}" style="height:${fh}px" alt=""></div>
+          <div class="s-hdiv"></div>
+          <div class="s-half" style="height:${fh}px"><img src="${p}" style="height:${fh}px" alt=""></div>
+        </div>`;
+      }
+    } else {
+      html += `<div class="s-frame" style="height:${fh}px">
+        <img class="s-solo-img" src="${y}" style="height:${fh}px;width:100%" alt="">
+      </div>`;
+    }
+
+    html += `<div style="height:2px;background:#111;width:100%"></div>`;
+  }
+
+  // Footer with stamp
+  const timeDate = [stamp.timeStr, stamp.dateStr].filter(Boolean).join('  ·  ');
+  const location = stamp.locationStr || '';
+  html += `<div class="strip-foot">INTERLINKED · ${S.code || ''}</div>`;
+
+  if (timeDate || location) {
+    html += `<div class="strip-stamp">${timeDate}${location ? '<br>' + location : ''}</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+/* ── RENDER TO CANVAS FOR DOWNLOAD ── */
+function renderCanvas() {
+  const isVert = S.orient === 'vert';
+  const W = isVert ? 320 : 540;
+  const PAD = 14;
+  const FW = W - PAD * 2;
+  const FH = isVert ? 200 : 120;
+  const GAP = 3;
+  const PADY = 26;
+  const H = PADY + 4 * (FH + GAP) + 60;
+
+  const c = document.getElementById('cv-render');
+  c.width = W;
+  c.height = H;
+
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.font = '600 8px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('INTERLINKED', W / 2, 15);
+
+  const loadImg = src => new Promise(res => {
+    if (!src) {
+      res(null);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = src;
+  });
+
+  const bwc = (img, w, h) => {
+    const cc = document.createElement('canvas');
+    cc.width = w;
+    cc.height = h;
+    const cx = cc.getContext('2d');
+    cx.drawImage(img, 0, 0, w, h);
+    const id = cx.getImageData(0, 0, w, h);
+    const d = id.data;
+
+    for (let k = 0; k < d.length; k += 4) {
+      const g = d[k] * 0.299 + d[k + 1] * 0.587 + d[k + 2] * 0.114;
+      const v = Math.min(255, Math.max(0, (g - 128) * 1.45 + 128));
+      d[k] = d[k + 1] = d[k + 2] = v;
+    }
+
+    cx.putImageData(id, 0, 0);
+    return cc;
+  };
+
+  (async () => {
+    for (let i = 0; i < 4; i++) {
+      const fy = PADY + i * (FH + GAP);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(PAD, fy, FW, FH);
+      const duo = S.isDuet && S.photosPartner[i];
+
+      if (duo) {
+        if (isVert) {
+          const hh = Math.floor(FH / 2);
+          const [a, b] = await Promise.all([loadImg(S.photosYou[i]), loadImg(S.photosPartner[i])]);
+          if (a) ctx.drawImage(bwc(a, FW, hh), PAD, fy, FW, hh);
+          if (b) ctx.drawImage(bwc(b, FW, hh), PAD, fy + hh, FW, hh);
+          ctx.fillStyle = '#000';
+          ctx.fillRect(PAD, fy + hh, FW, 2);
+        } else {
+          const hw = Math.floor(FW / 2);
+          const [a, b] = await Promise.all([loadImg(S.photosYou[i]), loadImg(S.photosPartner[i])]);
+          if (a) ctx.drawImage(bwc(a, hw, FH), PAD, fy, hw, FH);
+          if (b) ctx.drawImage(bwc(b, hw, FH), PAD + hw, fy, hw, FH);
+          ctx.fillStyle = '#000';
+          ctx.fillRect(PAD + hw, fy, 2, FH);
+        }
+      } else if (S.photosYou[i]) {
+        const img = await loadImg(S.photosYou[i]);
+        if (img) ctx.drawImage(bwc(img, FW, FH), PAD, fy, FW, FH);
+      }
+    }
+
+    const fy = PADY + 4 * (FH + GAP) + 8;
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(PAD, fy);
+    ctx.lineTo(PAD + FW, fy);
+    ctx.stroke();
+
+    const st = S.stamp || {};
+    ctx.fillStyle = '#aaa';
+    ctx.font = '300 6.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`INTERLINKED · ${S.code || ''}`, W / 2, fy + 12);
+
+    let sy = fy + 24;
+
+    if (st.timeStr || st.dateStr) {
+      ctx.fillStyle = '#888';
+      ctx.font = 'italic 300 6px serif';
+      ctx.fillText([st.timeStr, st.dateStr].filter(Boolean).join('  ·  '), W / 2, sy);
+      sy += 12;
+    }
+
+    if (st.locationStr) {
+      ctx.fillStyle = '#888';
+      ctx.font = 'italic 300 6px serif';
+      ctx.fillText(st.locationStr, W / 2, sy);
+    }
+  })();
+}
+
+function downloadStrip() {
+  setTimeout(() => {
+    const c = document.getElementById('cv-render');
+    const a = document.createElement('a');
+    a.download = `interlinked-${S.code || 'solo'}-${S.orient}-${Date.now()}.jpg`;
+    a.href = c.toDataURL('image/jpeg', 0.95);
+    a.click();
+  }, 600);
+}
+
+/* ── CLEANUP ── */
+function cleanup() {
+  if (S.localStream) {
+    S.localStream.getTracks().forEach(t => t.stop());
+    S.localStream = null;
+  }
+  if (S.call) {
+    try {
+      S.call.close();
+    } catch (e) {}
+    S.call = null;
+  }
+  if (S.conn) {
+    try {
+      S.conn.close();
+    } catch (e) {}
+    S.conn = null;
+  }
+  if (S.peer) {
+    try {
+      S.peer.destroy();
+    } catch (e) {}
+    S.peer = null;
+  }
+}
+
+function reshoot() {
+  cleanup();
+  S.idx = 0;
+  S.photosYou = [];
+  S.photosPartner = [];
+
+  ['vid-you', 'vid-partner'].forEach(id => {
+    const v = document.getElementById(id);
+    v.style.display = 'none';
+    v.srcObject = null;
+  });
+
+  document.getElementById('ph-you').style.display = 'flex';
+  document.getElementById('ph-partner').style.display = 'flex';
+  document.getElementById('live-badge').textContent = '';
+  document.getElementById('sync-bar').style.display = '';
+  document.getElementById('lbl-you').textContent = 'You';
+
+  const tw = document.getElementById('strip-travel-wrap');
+  const hang = document.getElementById('strip-hang');
+  tw.innerHTML = '';
+  hang.innerHTML = '';
+  tw.classList.remove('drop');
+  tw.style.transition = 'none';
+  tw.style.transform = 'translateY(-100%)';
+  hang.classList.remove('show');
+
+  document.getElementById('dl-btn').disabled = true;
+  document.getElementById('dl-btn').textContent = 'Developing…';
+  show('s-session');
+}
+
+function exitShoot() {
+  cleanup();
+  show('s-home');
+}
