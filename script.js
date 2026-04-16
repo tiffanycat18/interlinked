@@ -11,7 +11,7 @@ const PROMPTS = [
   },
   {
     act: 'Act III',
-    text: 'Look away for a second.\nLike you’re thinking of something.',
+    text: 'Look away for a second.\nLike you\'re thinking of something.',
     sub: 'Keep it effortless'
   },
   {
@@ -20,6 +20,7 @@ const PROMPTS = [
     sub: 'One last moment'
   }
 ];
+
 const S = {
   code: null,
   isDuet: false,
@@ -118,7 +119,6 @@ function initHost() {
     conn.on('open', () => {
       setBadge('connected', 'Partner connected ✦');
       conn.on('data', handleData);
-      // Go to orientation pick, then shoot will be triggered
       show('s-orient');
     });
 
@@ -303,7 +303,6 @@ function applyOrientToStage() {
   const camLeft = document.getElementById('cam-left');
   const syncBar = document.getElementById('sync-bar');
 
-  // Remove old classes
   stage.classList.remove('horiz', 'vert', 'solo');
 
   if (!S.isDuet) {
@@ -405,7 +404,6 @@ function captureMe() {
   const vid = document.getElementById('vid-you');
   const cnv = document.getElementById('cv-you');
 
-  // Use square canvas for both orientations — crop happens via object-fit in strip
   cnv.width = 480;
   cnv.height = 480;
 
@@ -506,7 +504,6 @@ async function getStamp() {
 
     const { latitude: lat, longitude: lon } = pos.coords;
 
-    // Reverse geocode using open-meteo's free geocoding sister: nominatim
     const geoRes = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
       { headers: { 'Accept-Language': 'en' } }
@@ -518,7 +515,7 @@ async function getStamp() {
     const country = addr.country_code ? addr.country_code.toUpperCase() : '';
     locationStr = [city, country].filter(Boolean).join(', ');
   } catch (e) {
-    locationStr = ''; // location denied or failed — just omit
+    locationStr = '';
   }
 
   return { timeStr, dateStr, locationStr };
@@ -531,7 +528,6 @@ async function runDrop() {
   const travelWrap = document.getElementById('strip-travel-wrap');
   const hang = document.getElementById('strip-hang');
 
-  // Reset
   travelWrap.innerHTML = '';
   hang.innerHTML = '';
   travelWrap.classList.remove('drop');
@@ -541,7 +537,6 @@ async function runDrop() {
   document.getElementById('dl-btn').disabled = true;
   document.getElementById('dl-btn').textContent = 'Developing…';
 
-  // Fetch stamp in parallel with building strip
   const stampPromise = getStamp();
 
   const isVert = S.orient === 'vert';
@@ -556,19 +551,15 @@ async function runDrop() {
   travelWrap.innerHTML = makeStrip(slotW, slotFH, stamp);
   hang.innerHTML = makeStrip(hangW, hangFH, stamp);
 
-  // Force a paint before starting transition
   travelWrap.getBoundingClientRect();
 
-  // Start the drop — 4s slow mechanical slide
   requestAnimationFrame(() => {
     travelWrap.style.transition = 'transform 4s cubic-bezier(.15,.85,.3,1)';
     travelWrap.classList.add('drop');
   });
 
-  // Show hanging strip just as drop finishes
   setTimeout(() => hang.classList.add('show'), 3800);
 
-  // Enable download after animation finishes
   setTimeout(() => {
     renderCanvas();
     document.getElementById('dl-btn').disabled = false;
@@ -610,7 +601,6 @@ function makeStrip(w, fh, stamp) {
     html += `<div style="height:2px;background:#111;width:100%"></div>`;
   }
 
-  // Footer with stamp
   const timeDate = [stamp.timeStr, stamp.dateStr].filter(Boolean).join('  ·  ');
   const location = stamp.locationStr || '';
   html += `<div class="strip-foot">INTERLINKED · ${S.code || ''}</div>`;
@@ -623,117 +613,180 @@ function makeStrip(w, fh, stamp) {
   return html;
 }
 
+/* ── CANVAS HELPER: object-fit cover ──
+   Draws img into (dx,dy,dw,dh) with cover behaviour — no distortion. */
+function drawCover(ctx, img, dx, dy, dw, dh) {
+  const imgRatio = img.width / img.height;
+  const boxRatio = dw / dh;
+  let sx, sy, sw, sh;
+
+  if (imgRatio > boxRatio) {
+    sh = img.height;
+    sw = img.height * boxRatio;
+    sx = (img.width - sw) / 2;
+    sy = 0;
+  } else {
+    sw = img.width;
+    sh = img.width / boxRatio;
+    sx = 0;
+    sy = (img.height - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+/* ── LOAD CUSTOM FONTS INTO CANVAS ── */
+async function loadStripFonts() {
+  try {
+    const fonts = [
+      new FontFace('Billa Mount',          'url(fonts/BillaMount.ttf)'),
+      new FontFace('Kommuna',              'url(fonts/Kommuna.ttf)'),
+      new FontFace('Saint Andrews Queen',  'url(fonts/Saint-AndrewsQueen.ttf)'),
+    ];
+    await Promise.all(
+      fonts.map(f =>
+        f.load()
+         .then(loaded => document.fonts.add(loaded))
+         .catch(() => {})
+      )
+    );
+  } catch(e) {}
+}
+
 /* ── RENDER TO CANVAS FOR DOWNLOAD ── */
-function renderCanvas() {
+async function renderCanvas() {
+  await loadStripFonts();
+
   const isVert = S.orient === 'vert';
-  const W = isVert ? 320 : 540;
-  const PAD = 14;
-  const FW = W - PAD * 2;
-  const FH = isVert ? 200 : 120;
-  const GAP = 3;
-  const PADY = 26;
-  const H = PADY + 4 * (FH + GAP) + 60;
+
+  const W    = isVert ? 360 : 600;
+  const PAD  = 16;
+  const FW   = W - PAD * 2;
+  const FH   = isVert ? Math.round(FW * 1.1) : Math.round(FW * 0.56);
+  const GAP  = 4;
+  const PADY = 36;
+  const FOOT = 130;  // enough whitespace for 4 footer lines
+
+  const H = PADY + 4 * (FH + GAP) - GAP + FOOT;
 
   const c = document.getElementById('cv-render');
-  c.width = W;
+  c.width  = W;
   c.height = H;
 
   const ctx = c.getContext('2d');
+
+  // Cream paper background
   ctx.fillStyle = '#f5f0e8';
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#1a1a1a';
-  ctx.font = '600 8px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('INTERLINKED', W / 2, 15);
 
+  // ── Helper: load image ──
   const loadImg = src => new Promise(res => {
-    if (!src) {
-      res(null);
-      return;
-    }
-    const img = new Image();
-    img.onload = () => res(img);
+    if (!src) { res(null); return; }
+    const img   = new Image();
+    img.onload  = () => res(img);
     img.onerror = () => res(null);
-    img.src = src;
+    img.src     = src;
   });
 
+  // ── Helper: B&W offscreen canvas with cover crop ──
   const bwc = (img, w, h) => {
-    const cc = document.createElement('canvas');
-    cc.width = w;
+    const cc  = document.createElement('canvas');
+    cc.width  = w;
     cc.height = h;
-    const cx = cc.getContext('2d');
-    cx.drawImage(img, 0, 0, w, h);
-    const id = cx.getImageData(0, 0, w, h);
-    const d = id.data;
-
+    const cx  = cc.getContext('2d');
+    drawCover(cx, img, 0, 0, w, h);
+    const id  = cx.getImageData(0, 0, w, h);
+    const d   = id.data;
     for (let k = 0; k < d.length; k += 4) {
       const g = d[k] * 0.299 + d[k + 1] * 0.587 + d[k + 2] * 0.114;
       const v = Math.min(255, Math.max(0, (g - 128) * 1.45 + 128));
       d[k] = d[k + 1] = d[k + 2] = v;
     }
-
     cx.putImageData(id, 0, 0);
     return cc;
   };
 
-  (async () => {
-    for (let i = 0; i < 4; i++) {
-      const fy = PADY + i * (FH + GAP);
-      ctx.fillStyle = '#111';
-      ctx.fillRect(PAD, fy, FW, FH);
-      const duo = S.isDuet && S.photosPartner[i];
+  // ── Draw 4 frames ──
+  for (let i = 0; i < 4; i++) {
+    const fy = PADY + i * (FH + GAP);
 
-      if (duo) {
-        if (isVert) {
-          const hh = Math.floor(FH / 2);
-          const [a, b] = await Promise.all([loadImg(S.photosYou[i]), loadImg(S.photosPartner[i])]);
-          if (a) ctx.drawImage(bwc(a, FW, hh), PAD, fy, FW, hh);
-          if (b) ctx.drawImage(bwc(b, FW, hh), PAD, fy + hh, FW, hh);
-          ctx.fillStyle = '#000';
-          ctx.fillRect(PAD, fy + hh, FW, 2);
-        } else {
-          const hw = Math.floor(FW / 2);
-          const [a, b] = await Promise.all([loadImg(S.photosYou[i]), loadImg(S.photosPartner[i])]);
-          if (a) ctx.drawImage(bwc(a, hw, FH), PAD, fy, hw, FH);
-          if (b) ctx.drawImage(bwc(b, hw, FH), PAD + hw, fy, hw, FH);
-          ctx.fillStyle = '#000';
-          ctx.fillRect(PAD + hw, fy, 2, FH);
-        }
-      } else if (S.photosYou[i]) {
-        const img = await loadImg(S.photosYou[i]);
-        if (img) ctx.drawImage(bwc(img, FW, FH), PAD, fy, FW, FH);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(PAD, fy, FW, FH);
+
+    const duo = S.isDuet && S.photosPartner[i];
+
+    if (duo) {
+      if (isVert) {
+        const hh = Math.floor(FH / 2);
+        const [a, b] = await Promise.all([
+          loadImg(S.photosYou[i]),
+          loadImg(S.photosPartner[i])
+        ]);
+        if (a) ctx.drawImage(bwc(a, FW, hh), PAD, fy,      FW, hh);
+        if (b) ctx.drawImage(bwc(b, FW, hh), PAD, fy + hh, FW, hh);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(PAD, fy + hh - 1, FW, 2);
+      } else {
+        const hw = Math.floor(FW / 2);
+        const [a, b] = await Promise.all([
+          loadImg(S.photosYou[i]),
+          loadImg(S.photosPartner[i])
+        ]);
+        if (a) ctx.drawImage(bwc(a, hw, FH), PAD,      fy, hw, FH);
+        if (b) ctx.drawImage(bwc(b, hw, FH), PAD + hw, fy, hw, FH);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(PAD + hw - 1, fy, 2, FH);
       }
+    } else if (S.photosYou[i]) {
+      const img = await loadImg(S.photosYou[i]);
+      if (img) ctx.drawImage(bwc(img, FW, FH), PAD, fy, FW, FH);
     }
+  }
 
-    const fy = PADY + 4 * (FH + GAP) + 8;
-    ctx.strokeStyle = '#ccc';
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(PAD, fy);
-    ctx.lineTo(PAD + FW, fy);
-    ctx.stroke();
+  // ── Footer separator ──
+  const footY = PADY + 4 * (FH + GAP);
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth   = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD, footY);
+  ctx.lineTo(PAD + FW, footY);
+  ctx.stroke();
 
-    const st = S.stamp || {};
-    ctx.fillStyle = '#aaa';
-    ctx.font = '300 6.5px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`INTERLINKED · ${S.code || ''}`, W / 2, fy + 12);
+  const st = S.stamp || {};
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
 
-    let sy = fy + 24;
+  // Calculate block start — push it down into the white space
+  const blockStart = footY + 35;
+  const lineH      = 22;  // tight, even spacing between every line
 
-    if (st.timeStr || st.dateStr) {
-      ctx.fillStyle = '#888';
-      ctx.font = 'italic 300 6px serif';
-      ctx.fillText([st.timeStr, st.dateStr].filter(Boolean).join('  ·  '), W / 2, sy);
-      sy += 12;
-    }
+  // "Interlinked Photobooth" — Billa Mount
+  ctx.fillStyle = '#555';
+  ctx.font      = '400 15px "Billa Mount", serif';
+  ctx.fillText('Interlinked Photobooth', W / 2, blockStart);
 
-    if (st.locationStr) {
-      ctx.fillStyle = '#888';
-      ctx.font = 'italic 300 6px serif';
-      ctx.fillText(st.locationStr, W / 2, sy);
-    }
-  })();
+  // Session code or "SOLO" — Kommuna
+  ctx.fillStyle = '#999';
+  ctx.font      = '400 11px Kommuna';
+  ctx.fillText(S.code || 'SOLO', W / 2, blockStart + lineH);
+
+  // Time · Date — Kommuna italic
+  if (st.timeStr || st.dateStr) {
+    ctx.fillStyle = '#888';
+    ctx.font      = 'italic 400 13px Kommuna';
+    ctx.fillText(
+      [st.timeStr, st.dateStr].filter(Boolean).join('  ·  '),
+      W / 2,
+      blockStart + lineH * 2
+    );
+  }
+
+  // Location — Saint Andrews Queen, 15px
+  if (st.locationStr) {
+    ctx.fillStyle = '#888';
+    ctx.font      = '400 20px "Saint Andrews Queen", serif';
+    ctx.fillText(st.locationStr, W / 2, blockStart + lineH * 3);
+  }
 }
 
 function downloadStrip() {
@@ -753,21 +806,15 @@ function cleanup() {
     S.localStream = null;
   }
   if (S.call) {
-    try {
-      S.call.close();
-    } catch (e) {}
+    try { S.call.close(); } catch (e) {}
     S.call = null;
   }
   if (S.conn) {
-    try {
-      S.conn.close();
-    } catch (e) {}
+    try { S.conn.close(); } catch (e) {}
     S.conn = null;
   }
   if (S.peer) {
-    try {
-      S.peer.destroy();
-    } catch (e) {}
+    try { S.peer.destroy(); } catch (e) {}
     S.peer = null;
   }
 }
