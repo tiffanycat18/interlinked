@@ -1,8 +1,3 @@
-/*
-  mobile.css — Interlinked Photobooth
-  Add AFTER styles.css: <link rel="stylesheet" href="mobile.css">
-  All rules scoped to max-width: 768px. Desktop untouched.
-*/
 
 @media screen and (max-width: 768px) {
 
