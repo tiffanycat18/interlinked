@@ -1,18 +1,12 @@
 @media screen and (max-width: 768px) {
 
-  html {
-    overflow: hidden;
-    height: 100%;
-  }
-  body {
-    overflow: hidden;
+  /* ─── PREVENT RUBBER-BAND RED BLEED ─── */
+  html, body {
     height: 100%;
     overscroll-behavior: none;
-    /* Body background matches whichever screen is active */
-    background: var(--red);
   }
 
-  /* Black screens get black body so no red shows behind them */
+  /* Black body behind black screens */
   body:has(#s-session.active),
   body:has(#s-waiting.active),
   body:has(#s-join.active),
@@ -22,161 +16,164 @@
     background: #000;
   }
 
-  /* Every screen fills the viewport exactly */
+  /* All screens: fill viewport exactly */
   .screen {
+    min-height: 100dvh;
     height: 100dvh;
-    min-height: unset;
-    /* DO NOT add overflow:hidden here — it breaks camera */
   }
 
-  /* ────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────
      HOME SCREEN
-     Problem: padding: 3rem 1rem 5rem in styles.css
-     makes total content taller than viewport.
-     Fix: replace with safe-area padding + space-evenly
-     so machine is centered and red is full-bleed.
-  ──────────────────────────────────────────── */
+     Root cause of red bleed + overflow:
+     1. padding: 3rem 1rem 5rem → too much vertical space
+     2. .c-plate { margin-top: 50px } → pushes machine down
+     3. .machine-cta { margin-top: 65px } → pushes CTA off screen
+     4. .chrome-int { min-height: 290px } → machine too tall
+     Fix: zero out those specific values, use space-evenly
+  ───────────────────────────────────────────────── */
   #s-home {
-    padding-top:    env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left:  1rem;
-    padding-right: 1rem;
+    padding: 0 1rem;
     justify-content: space-evenly;
+    align-items: center;
+    overflow: hidden;
   }
 
-  /* Remove desktop 50px top margin on plate */
+  /* Remove the 50px gap above the chrome machine plate */
   .c-plate {
     margin-top: 0;
   }
 
-  /* Remove desktop 65px top margin on CTA */
+  /* Remove the 65px gap above Enter button */
   .machine-cta {
     margin-top: 0;
   }
 
-  /* ────────────────────────────────────────────
+  /* The machine interior: override 290px min-height
+     so it scales down to fit shorter phone screens */
+  .chrome-int {
+    min-height: 0;
+    height: clamp(160px, 32vh, 290px);
+  }
+
+  /* ─────────────────────────────────────────────────
      SESSION SCREEN
-     Problem: .sess-title is 2.5rem + line-height:2em
-     = about 160px tall before any cards.
-     Fix: shrink title and card padding so it fits.
-  ──────────────────────────────────────────── */
+     Root cause: title 2.5rem + line-height:2em ≈ 160px
+     + cards + eyebrow = taller than screen.
+     Content pinned to top so it looks cramped.
+     Fix: center content, reduce title, tighten cards.
+  ───────────────────────────────────────────────── */
   #s-session {
-    padding-top:    env(safe-area-inset-top, 1rem);
-    padding-bottom: env(safe-area-inset-bottom, 1rem);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    justify-content: flex-start;
+    padding: env(safe-area-inset-top, 1rem) 1rem
+             env(safe-area-inset-bottom, 1rem) 1rem;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
   }
 
   .sess-eyebrow {
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
   }
 
-  /* The big title — reduce from 2.5rem / line-height 2em */
+  /* Title: was 2.5rem / line-height 2em = ~160px tall.
+     Reduce to readable size that fits with cards below. */
   .sess-title {
-    font-size: 1.5rem;
-    line-height: 1.15em;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.6rem;
+    font-size: 2rem;
+    line-height: 1.3em;
+    margin-bottom: 1.2rem;
   }
 
+  /* Cards: slightly tighter padding */
   .s-card {
-    padding: 0.8rem 0.7rem;
+    padding: 1.2rem 0.8rem;
   }
 
   .s-card h2,
   .sess-solo-card h2 {
-    font-size: 1.4rem;
-    margin-bottom: 0.4rem;
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
     line-height: 1em;
   }
 
   .s-card p,
   .sess-solo-card p {
-    font-size: 0.58rem;
-    line-height: 1.4;
+    font-size: 0.65rem;
+    line-height: 1.5;
   }
 
   .sess-solo-card {
-    padding: 0.6rem 0.8rem;
-    margin-bottom: 0.5rem;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
   }
 
   .sess-solo-card .solo-left {
-    margin-left: 0.3rem;
+    margin-left: 0.5rem;
   }
 
   .back-link {
-    margin-top: 0.1rem;
-    font-size: 1.2rem;
+    margin-top: 0.5rem;
   }
 
-  /* ────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────
      SHOOT SCREEN
-     Problem: cam-stage.vert has aspect-ratio:9/14
-     which is taller than the screen. Camera disappears.
-     Fix: constrain camera height explicitly with
-     max-height. Remove aspect-ratio so it adapts.
-  ──────────────────────────────────────────── */
+     Camera was showing as wide/horizontal because
+     .cam-stage.vert has aspect-ratio:9/14 which on
+     mobile becomes wider than tall when width=100%.
+     Fix: set explicit portrait height.
+  ───────────────────────────────────────────────── */
   #s-shoot {
-    padding-top:    env(safe-area-inset-top, 0.5rem);
-    padding-bottom: env(safe-area-inset-bottom, 0.5rem);
-    justify-content: flex-start;
+    padding: env(safe-area-inset-top, 0.5rem) 0.5rem
+             env(safe-area-inset-bottom, 0.5rem) 0.5rem;
+    overflow: hidden;
   }
 
-  /* Vertical camera: drop the fixed aspect-ratio,
-     use max-height so it's always visible */
   .cam-stage.vert {
     aspect-ratio: unset;
     width: 100%;
     max-width: 100%;
-    height: 55vw;       /* square-ish on portrait phone */
-    max-height: 55vh;   /* never taller than half the screen */
+    height: 52vh;
   }
 
-  /* Horizontal camera */
   .cam-stage.horiz {
-    max-height: 42vh;
+    aspect-ratio: unset;
+    width: 100%;
+    height: 40vh;
   }
 
-  /* ────────────────────────────────────────────
+  /* ─────────────────────────────────────────────────
      ORIENTATION PICKER
-     Problem: orient-title and orient-sub both
-     have margin-top: 50px in styles.css
-  ──────────────────────────────────────────── */
+     margin-top: 50px on both title and sub = overflow
+  ───────────────────────────────────────────────── */
   #s-orient {
-    padding-top:    env(safe-area-inset-top, 1rem);
-    padding-bottom: env(safe-area-inset-bottom, 1rem);
+    padding: env(safe-area-inset-top, 1rem) 1rem
+             env(safe-area-inset-bottom, 1rem) 1rem;
     justify-content: center;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
   }
 
   .orient-title {
-    margin-top: 0.5rem;
-    font-size: 2.2rem;
-    line-height: 1.15;
+    margin-top: 0;
+    font-size: 2.5rem;
+    line-height: 1.2;
   }
 
   .orient-sub {
-    margin-top: 0.4rem;
-    margin-bottom: 1rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1.2rem;
   }
 
   .orient-grid {
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
   }
 
-  /* ── WAITING + JOIN ── */
+  /* ─── WAITING + JOIN ─── */
   #s-waiting,
   #s-join {
-    padding-top:    env(safe-area-inset-top, 1rem);
-    padding-bottom: env(safe-area-inset-bottom, 1rem);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    padding: env(safe-area-inset-top, 1rem) 1rem
+             env(safe-area-inset-bottom, 1rem) 1rem;
+    overflow: hidden;
   }
 
-  /* ── DROP SCREEN — intentionally scrollable ── */
+  /* ─── DROP SCREEN: strip is taller than screen, must scroll ─── */
   #s-drop {
     height: auto;
     min-height: 100dvh;
@@ -185,7 +182,7 @@
     padding-bottom: max(2rem, env(safe-area-inset-bottom));
   }
 
-  /* ── iOS INPUT ZOOM PREVENTION ── */
+  /* ─── iOS INPUT ZOOM PREVENTION ─── */
   .join-input {
     font-size: max(16px, 3rem);
   }
