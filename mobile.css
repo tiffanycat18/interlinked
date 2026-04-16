@@ -1,0 +1,180 @@
+/* ── 1. USE DYNAMIC VIEWPORT HEIGHT ──
+   100vh on mobile = includes browser chrome (address bar).
+   100dvh = actual visible screen height.
+   This stops screens being slightly too tall or short. */
+html, body {
+  height: 100%;
+  /* prevent rubber-band scroll revealing red behind black screens */
+  overscroll-behavior: none;
+}
+
+.screen {
+  min-height: 100vh;
+  min-height: 100dvh; /* modern mobile browsers */
+}
+
+/* ── 2. BLACK SCREENS GET BLACK BODY BACKGROUND ──
+   When a black screen is active, the body background
+   should also be black, not the default red.
+   This covers the gap above/below on short phones. */
+body:has(#s-session.active),
+body:has(#s-waiting.active),
+body:has(#s-join.active),
+body:has(#s-orient.active),
+body:has(#s-shoot.active),
+body:has(#s-drop.active) {
+  background: #000;
+}
+
+/* ── 3. HOME SCREEN — FILL FULL VIEWPORT ──
+   Ensure the red radial gradient covers the entire screen
+   including safe areas on notched phones. */
+#s-home {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top, 1rem);
+  padding-bottom: env(safe-area-inset-bottom, 5rem);
+  /* prevent content from going under notch */
+}
+
+/* ── 4. ALL SCREENS — SAFE AREA PADDING ──
+   Prevents content hiding behind notch / home indicator. */
+.screen.active {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* Override for screens that have their own horizontal padding */
+#s-home,
+#s-session,
+#s-shoot {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* ── 5. SESSION SCREEN — SCROLL WITHIN SCREEN ──
+   On very short phones the cards overflow. Let the screen scroll. */
+#s-session {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  padding-top: 2.5rem;
+  padding-bottom: 3rem;
+}
+
+/* Shrink title on small screens so it fits */
+@media (max-height: 700px) {
+  .sess-title {
+    font-size: 2rem;
+    line-height: 1.5em;
+    margin-bottom: 1rem;
+  }
+  .sess-eyebrow {
+    margin-bottom: 1.5rem;
+  }
+  .s-card {
+    padding: 1.2rem .8rem;
+  }
+  .s-card h2,
+  .sess-solo-card h2 {
+    font-size: 1.6rem;
+    margin-bottom: .8rem;
+  }
+  .sess-solo-card {
+    padding: 1.2rem 1rem;
+    margin-bottom: 1.2rem;
+  }
+}
+
+/* ── 6. SHOOT SCREEN — CAMERA FITS VIEWPORT ──
+   On mobile the camera stage can be too tall.
+   Cap it so prompt + buttons always fit below. */
+#s-shoot {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  padding-top: 1rem;
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+
+/* Vertical camera: constrain height so buttons are always visible */
+.cam-stage.vert {
+  max-width: min(360px, 90vw);
+  max-height: 55vh;
+  aspect-ratio: auto;
+  width: 100%;
+}
+
+/* Horizontal camera: constrain height on short screens */
+.cam-stage.horiz {
+  max-height: 45vh;
+}
+
+/* ── 7. DROP SCREEN — STRIP FITS WITHOUT SCROLL ──
+   The strip + machine can be taller than the screen.
+   Allow the screen to scroll vertically. */
+#s-drop {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  padding-bottom: max(3rem, env(safe-area-inset-bottom, 3rem));
+}
+
+/* ── 8. ORIENTATION PICKER — FITS SHORT SCREENS ── */
+#s-orient {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  justify-content: flex-start;
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+@media (max-height: 700px) {
+  .orient-title {
+    font-size: 2.5rem;
+    line-height: 2.5rem;
+    margin-top: 1.5rem;
+  }
+  .orient-sub {
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .orient-grid {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* ── 9. WAITING SCREEN ── */
+#s-waiting,
+#s-join {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 2rem);
+}
+
+/* ── 10. TOUCH TARGETS ──
+   Buttons should be at least 44px tall for comfortable tapping. */
+.btn,
+.enter-btn,
+.back-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── 11. PREVENT TEXT ZOOM ON INPUT FOCUS (iOS) ──
+   iOS Safari zooms in when an input font-size < 16px. */
+.join-input {
+  font-size: max(16px, 2rem);
+}
