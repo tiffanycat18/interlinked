@@ -1,227 +1,93 @@
-/*
-  mobile.css — Interlinked Photobooth
-  Link AFTER styles.css:
-  <link rel="stylesheet" href="mobile.css">
-*/
 
-/* ── BASE ── */
-*, *::before, *::after { box-sizing: border-box; }
+@media screen and (max-width: 768px) {
 
-html, body {
-  height: 100%;
-  overscroll-behavior: none;
-}
+  /* ── 1. STOP RUBBER-BAND REVEALING RED BEHIND BLACK SCREENS ── */
+  html, body {
+    overscroll-behavior: none;
+  }
 
-/* 100svh = small viewport height — excludes browser chrome, always fits */
-.screen {
-  min-height: 100svh;
-}
+  /* ── 2. ALL SCREENS USE DYNAMIC VIEWPORT HEIGHT ──
+     100svh = viewport minus browser chrome (address bar).
+     This stops screens being taller than what's visible. */
+  .screen {
+    min-height: 100svh;
+  }
 
-/* ── BODY BACKGROUND MATCHES ACTIVE SCREEN ── */
-body:has(#s-session.active),
-body:has(#s-waiting.active),
-body:has(#s-join.active),
-body:has(#s-orient.active),
-body:has(#s-shoot.active),
-body:has(#s-drop.active) {
-  background: #000;
-}
+  /* ── 3. MATCH BODY BACKGROUND TO ACTIVE SCREEN ──
+     Prevents red body showing above/below black screens. */
+  body:has(#s-session.active),
+  body:has(#s-waiting.active),
+  body:has(#s-join.active),
+  body:has(#s-orient.active),
+  body:has(#s-shoot.active),
+  body:has(#s-drop.active) {
+    background: #000;
+  }
 
-/* ─────────────────────────────────────────
-   HOME SCREEN
-   Hard-cap to screen height, no scroll,
-   no red bleed. Machine scales to fit.
-───────────────────────────────────────── */
-#s-home {
-  height: 100svh;
-  max-height: 100svh;
-  overflow: hidden;
-  padding-top: max(1rem, env(safe-area-inset-top));
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  padding-left: 1rem;
-  padding-right: 1rem;
-  justify-content: center;
-  gap: 0;
-}
+  /* ── 4. HOME SCREEN ──
+     Cap to exactly the visible viewport. Machine is already
+     sized in styles.css — we just stop overflow and add
+     safe area padding for notched iPhones. */
+  #s-home {
+    min-height: 100svh;
+    padding-top: max(3rem, env(safe-area-inset-top));
+    padding-bottom: max(5rem, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
 
-#s-home .eyebrow {
-  margin-bottom: 0.6rem;
-}
+  /* ── 5. SESSION SCREEN ──
+     Allow scroll only if content is taller than screen.
+     Starts at top so nothing is cut. */
+  #s-session {
+    min-height: 100svh;
+    justify-content: flex-start;
+    padding-top: max(2rem, env(safe-area-inset-top));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-#s-home .enter-tag {
-  margin-top: 0.4rem;
-}
+  /* ── 6. WAITING + JOIN SCREENS ── */
+  #s-waiting,
+  #s-join {
+    min-height: 100svh;
+    padding-top: max(2rem, env(safe-area-inset-top));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-/* Machine plate — remove the 50px desktop margin-top */
-#s-home .c-plate {
-  margin-top: 0;
-  padding: 7px 16px 6px;
-}
+  /* ── 7. ORIENTATION PICKER ── */
+  #s-orient {
+    min-height: 100svh;
+    justify-content: flex-start;
+    padding-top: max(2rem, env(safe-area-inset-top));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-#s-home .c-plate-title {
-  font-size: clamp(13px, 3.8vw, 20px);
-  line-height: 1.6;
-}
+  /* ── 8. SHOOT SCREEN ── */
+  #s-shoot {
+    min-height: 100svh;
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-#s-home .c-plate-min {
-  margin-top: 4px;
-}
+  /* ── 9. DROP SCREEN ── */
+  #s-drop {
+    min-height: 100svh;
+    padding-bottom: max(3rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 
-/* Chrome body — narrower on mobile */
-#s-home .chrome-body {
-  width: clamp(130px, 42vw, 190px);
-}
+  /* ── 10. PREVENT iOS ZOOM ON INPUT FOCUS ──
+     Safari zooms in when input font-size < 16px. */
+  .join-input {
+    font-size: max(16px, 3rem);
+  }
 
-/* Chrome interior — shrink height to fit screen */
-#s-home .chrome-int {
-  min-height: 0;
-  height: clamp(140px, 30vh, 290px);
-}
-
-/* CTA — reduce gap so everything fits */
-#s-home .machine-cta {
-  margin-top: clamp(12px, 3vh, 40px);
-}
-
-/* ─────────────────────────────────────────
-   SESSION SCREEN
-   Fits 3 cards without scrolling on 390px+
-   phones. Scrollable on very short devices.
-───────────────────────────────────────── */
-#s-session {
-  height: 100svh;
-  max-height: 100svh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  justify-content: center;
-  padding: max(1rem, env(safe-area-inset-top)) 1rem
-           max(1rem, env(safe-area-inset-bottom)) 1rem;
-}
-
-#s-session .sess-eyebrow {
-  margin-bottom: 0.8rem;
-}
-
-/* Title — scale down from 2.5rem desktop */
-#s-session .sess-title {
-  font-size: clamp(1.5rem, 9vw, 2.5rem);
-  line-height: 1.25em;
-  margin-bottom: 0.8rem;
-}
-
-/* Cards */
-#s-session .s-card {
-  padding: 1rem 0.8rem;
-}
-
-#s-session .s-card h2,
-#s-session .sess-solo-card h2 {
-  font-size: clamp(1.3rem, 5.5vw, 2.15rem);
-  margin-bottom: 0.6rem;
-}
-
-#s-session .s-card p,
-#s-session .sess-solo-card p {
-  font-size: 0.65rem;
-  line-height: 1.5;
-}
-
-#s-session .sess-solo-card {
-  padding: 0.9rem 1rem;
-  margin-bottom: 0.8rem;
-}
-
-/* Remove large desktop left indent on solo card */
-#s-session .sess-solo-card .solo-left {
-  margin-left: 0.8rem;
-}
-
-#s-session .back-link {
-  margin-top: 0.3rem;
-}
-
-/* ─────────────────────────────────────────
-   SHOOT SCREEN
-───────────────────────────────────────── */
-#s-shoot {
-  min-height: 100svh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  justify-content: flex-start;
-  padding: 0.8rem 0.5rem 1rem;
-}
-
-.cam-stage.vert {
-  max-width: min(340px, 88vw);
-  max-height: 50vh;
-  aspect-ratio: auto;
-  width: 100%;
-}
-
-.cam-stage.horiz {
-  max-height: 40vh;
-}
-
-/* ─────────────────────────────────────────
-   DROP SCREEN
-───────────────────────────────────────── */
-#s-drop {
-  min-height: 100svh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  justify-content: flex-start;
-  padding-bottom: 3rem;
-}
-
-/* ─────────────────────────────────────────
-   ORIENTATION PICKER
-───────────────────────────────────────── */
-#s-orient {
-  min-height: 100svh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  justify-content: center;
-  padding: max(1.5rem, env(safe-area-inset-top)) 1rem
-           max(1.5rem, env(safe-area-inset-bottom)) 1rem;
-}
-
-#s-orient .orient-title {
-  font-size: clamp(1.8rem, 8vw, 3.7rem);
-  line-height: 1.2;
-  margin-top: 0.8rem;
-}
-
-#s-orient .orient-sub {
-  margin-top: 0.6rem;
-  margin-bottom: 1.2rem;
-}
-
-/* ─────────────────────────────────────────
-   WAITING + JOIN
-───────────────────────────────────────── */
-#s-waiting,
-#s-join {
-  min-height: 100svh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: max(2rem, env(safe-area-inset-bottom));
-}
-
-/* ─────────────────────────────────────────
-   TOUCH TARGETS
-───────────────────────────────────────── */
-.btn,
-.enter-btn,
-.back-link {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ─────────────────────────────────────────
-   iOS INPUT ZOOM PREVENTION
-───────────────────────────────────────── */
-.join-input {
-  font-size: max(16px, 2rem);
 }
