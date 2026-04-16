@@ -1,24 +1,30 @@
+/*
+  mobile.css — Interlinked Photobooth
+  Add AFTER styles.css: <link rel="stylesheet" href="mobile.css">
+  All rules scoped to max-width: 768px. Desktop untouched.
+*/
+
 @media screen and (max-width: 768px) {
 
   /* ─────────────────────────────────────────
-     GLOBAL MOBILE BASE
-     Stop overscroll rubber-band revealing red.
-     Use 100svh (small viewport = excludes
-     browser chrome) so nothing overflows.
+     STOP OVERSCROLL RUBBER-BAND (red bleed)
   ───────────────────────────────────────── */
   html, body {
     height: 100%;
+    overflow: hidden;
     overscroll-behavior: none;
   }
 
-  /* Every screen: exactly the visible viewport, no overflow */
+  /* ─────────────────────────────────────────
+     ALL SCREENS: exact viewport, no overflow
+  ───────────────────────────────────────── */
   .screen {
-    min-height: 100svh;
-    max-height: 100svh;
+    height: 100svh;
+    min-height: unset;
     overflow: hidden;
   }
 
-  /* Body background matches active screen — stops red bleed */
+  /* Black body behind black screens (no red gap) */
   body:has(#s-session.active),
   body:has(#s-waiting.active),
   body:has(#s-join.active),
@@ -30,175 +36,147 @@
 
   /* ─────────────────────────────────────────
      HOME SCREEN
-     No scroll. Machine + text fit the screen.
+     The original padding: 3rem 1rem 5rem is
+     what causes the red gap + overflow.
+     Replace with safe-area-aware padding and
+     use justify-content: space-evenly so the
+     machine sits centred with even red space
+     above and below — fully contained.
   ───────────────────────────────────────── */
   #s-home {
-    padding: env(safe-area-inset-top, 1rem) 1rem
-             env(safe-area-inset-bottom, 1rem) 1rem;
-    justify-content: center;
-    gap: 0.5rem;
+    padding-top: env(safe-area-inset-top, 2rem);
+    padding-bottom: env(safe-area-inset-bottom, 2rem);
+    padding-left: 1rem;
+    padding-right: 1rem;
+    justify-content: space-evenly;
+    align-items: center;
     overflow: hidden;
   }
 
-  /* Reduce spacing above machine */
-  .eyebrow {
-    margin-bottom: 0.6rem;
-  }
-
-  /* Plate: remove the 50px desktop top margin */
+  /* Remove desktop margin-top from plate */
   .c-plate {
     margin-top: 0;
-    padding: 7px 14px 6px;
   }
 
-  .c-plate-title {
-    font-size: 16px;
-    line-height: 1.6;
-  }
-
-  .c-plate-min {
-    margin-top: 4px;
-    font-size: 10px;
-  }
-
-  /* Chrome body: narrower */
-  .chrome-body {
-    width: 160px;
-  }
-
-  /* Chrome interior: shorter so it fits vertically */
-  .chrome-int {
-    min-height: 0;
-    height: clamp(120px, 28vh, 230px);
-  }
-
-  /* CTA: reduce gap */
+  /* Remove desktop margin-top from machine-cta */
   .machine-cta {
-    margin-top: clamp(10px, 2.5vh, 40px);
-  }
-
-  .enter-tag {
-    margin-top: 0.4rem;
+    margin-top: 0;
   }
 
   /* ─────────────────────────────────────────
      SESSION SCREEN
-     Title is 2.5rem + line-height 2em = huge.
-     Scale it down so 3 cards fit without scroll.
+     Title font + line-height is too tall.
+     Scale it so 3 cards fit without scroll.
   ───────────────────────────────────────── */
   #s-session {
-    padding: env(safe-area-inset-top, 1rem) 1rem
-             env(safe-area-inset-bottom, 1rem) 1rem;
+    padding-top: env(safe-area-inset-top, 1rem);
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
     justify-content: center;
     overflow: hidden;
   }
 
-  /* Eyebrow: less margin */
   .sess-eyebrow {
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.6rem;
   }
 
-  /* Title: scale down from 2.5rem / line-height 2em */
+  /* 2.5rem * line-height 2em is the scroll culprit */
   .sess-title {
-    font-size: clamp(1.4rem, 8vw, 2rem);
+    font-size: 1.6rem;
     line-height: 1.2em;
     margin-bottom: 0.8rem;
   }
 
-  /* Cards: tighter padding */
   .s-card {
     padding: 0.9rem 0.8rem;
   }
 
   .s-card h2,
   .sess-solo-card h2 {
-    font-size: clamp(1.2rem, 5.5vw, 1.8rem);
-    margin-bottom: 0.6rem;
-    line-height: 1.1em;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    line-height: 1em;
   }
 
   .s-card p,
   .sess-solo-card p {
-    font-size: 0.62rem;
-    line-height: 1.4;
+    font-size: 0.6rem;
   }
 
   .sess-solo-card {
-    padding: 0.8rem 1rem;
-    margin-bottom: 0.8rem;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.6rem;
   }
 
   .sess-solo-card .solo-left {
     margin-left: 0.5rem;
   }
 
-  /* Back link: less margin */
   .back-link {
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
     font-size: 1.3rem;
   }
 
   /* ─────────────────────────────────────────
-     WAITING + JOIN SCREENS
+     WAITING + JOIN
   ───────────────────────────────────────── */
   #s-waiting,
   #s-join {
-    padding: env(safe-area-inset-top, 1rem) 1rem
-             env(safe-area-inset-bottom, 1rem) 1rem;
+    padding-top: env(safe-area-inset-top, 1rem);
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
     overflow: hidden;
   }
 
   /* ─────────────────────────────────────────
      ORIENTATION PICKER
-     margin-top: 50px on title and sub cause scroll
+     margin-top: 50px on title + sub = overflow
   ───────────────────────────────────────── */
   #s-orient {
-    padding: env(safe-area-inset-top, 1rem) 1rem
-             env(safe-area-inset-bottom, 1rem) 1rem;
+    padding-top: env(safe-area-inset-top, 1rem);
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
     justify-content: center;
     overflow: hidden;
   }
 
   .orient-title {
-    font-size: clamp(1.8rem, 8vw, 3.2rem);
+    margin-top: 0.5rem;
+    font-size: 2.5rem;
     line-height: 1.2;
-    margin-top: 0.5rem;  /* override the 50px desktop margin */
   }
 
   .orient-sub {
-    margin-top: 0.5rem;  /* override the 50px desktop margin */
-    margin-bottom: 1.2rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
   }
 
   .orient-grid {
-    margin-bottom: 1.2rem;
+    margin-bottom: 1rem;
   }
 
   /* ─────────────────────────────────────────
      SHOOT SCREEN
-     Constrain camera so prompt + button visible
   ───────────────────────────────────────── */
   #s-shoot {
-    padding: env(safe-area-inset-top, 0.5rem) 0.5rem
-             env(safe-area-inset-bottom, 0.5rem) 0.5rem;
+    padding-top: env(safe-area-inset-top, 0.5rem);
+    padding-bottom: env(safe-area-inset-bottom, 0.5rem);
     overflow: hidden;
   }
 
   .cam-stage.vert {
-    max-width: min(320px, 85vw);
-    max-height: 48vh;
+    max-height: 50vh;
     aspect-ratio: auto;
   }
 
   .cam-stage.horiz {
-    max-height: 38vh;
+    max-height: 40vh;
   }
 
   /* ─────────────────────────────────────────
-     DROP SCREEN — allow scroll (strip is tall)
+     DROP SCREEN — strip is taller than screen,
+     must scroll, that's intentional
   ───────────────────────────────────────── */
   #s-drop {
-    max-height: none;   /* allow full height */
+    height: auto;
+    min-height: 100svh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: max(2rem, env(safe-area-inset-bottom));
