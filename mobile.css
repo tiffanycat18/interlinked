@@ -1,7 +1,8 @@
+/* ── Body stays red (home screen colour); black screens override via their own bg ── */
 html, body {
   min-height: 100%;
   height: 100%;
-  background: #000;          /* neutral; each screen sets its own bg */
+  background: #8B1A1A;       /* matches --red; home screen shows through cleanly */
 }
 
 /* Every screen fills the viewport exactly — no gaps for body colour to show */
