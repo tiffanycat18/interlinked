@@ -1,17 +1,16 @@
-html,
-body {
+/* ── GLOBAL: body stays black so no colour bleeds on black screens ── */
+html, body {
   min-height: 100%;
-  background: #8B1A1A;
+  background: #000;
 }
 
-/* ── 2. Every screen fills the full dynamic viewport so
-   no html/body colour peeks through at top or bottom ── */
+/* ── All screens fill full dynamic viewport height ── */
 .screen {
   width: 100%;
   min-height: 100dvh;
 }
 
-/* ── 3. Black screens paint over the red body completely ── */
+/* ── Black screens are explicitly black ── */
 #s-session,
 #s-waiting,
 #s-join,
@@ -22,25 +21,39 @@ body {
   min-height: 100dvh;
 }
 
-/* ── 4. Home screen red gradient covers full viewport ── */
-#s-home {
-  background:
-    radial-gradient(ellipse at 25% 20%, #b02525 0%, transparent 50%),
-    radial-gradient(ellipse at 75% 80%, #5a0e0e 0%, transparent 50%),
-    #8B1A1A;
-  min-height: 100dvh;
+/* ── HOME SCREEN: the only bulletproof fix for mobile Safari gaps ──
+   position:fixed + inset:0 makes the element literally BE the viewport.
+   overflow-y:auto lets content scroll inside it if needed.
+   No gap can exist because the element physically covers everything. ── */
+#s-home.active {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* z-index so it sits above body */
+  z-index: 1;
 }
 
-/* ── 5. Fix Kommuna headings — huge on mobile ── */
+/* When home is not active, reset so it doesn't block other screens */
+#s-home:not(.active) {
+  position: static;
+  height: auto;
+}
+
+/* ── Fix Kommuna headings — render huge on mobile ── */
 .s-card h2,
 .sess-solo-card h2 {
   font-size: 1rem;
   line-height: 1.4em;
   margin-bottom: 0.8rem;
-  letter-spacing: 0.08em;
 }
 
-/* ── HOME: compact to fit without scrolling ── */
+/* ── HOME: compact to fit screen ── */
 @media (max-width: 480px) {
   #s-home {
     padding: 1.6rem 1rem 2rem;
@@ -185,7 +198,7 @@ body {
   }
 }
 
-/* ── iPhone SE and short screens ── */
+/* ── iPhone SE / short screens ── */
 @media (max-width: 390px) and (max-height: 700px) {
   #s-home {
     padding: 1rem 0.75rem 1.2rem;
