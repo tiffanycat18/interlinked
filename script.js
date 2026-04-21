@@ -433,9 +433,12 @@ function captureMe() {
 }
 
 function checkNext() {
-  if (S.photosYou.length > S.idx && (!S.isDuet || S.photosPartner.length > S.idx)) {
-    setTimeout(advance, 380);
-  }
+  // Wait until BOTH your photo AND partner's photo for this index exist
+  // S.idx is the current frame (0-3). We need length > S.idx meaning
+  // index S.idx has been filled (length becomes idx+1 after push).
+  const youDone     = S.photosYou.length > S.idx;
+  const partnerDone = !S.isDuet || S.photosPartner.length > S.idx;
+  if (youDone && partnerDone) setTimeout(advance, 380);
 }
 
 async function advance() {
@@ -560,8 +563,9 @@ async function runDrop() {
 
   setTimeout(() => hang.classList.add('show'), 3800);
 
-  setTimeout(() => {
-    renderCanvas();
+  // Wait for animation to finish, then render canvas and enable download
+  setTimeout(async () => {
+    await renderCanvas();
     document.getElementById('dl-btn').disabled = false;
     document.getElementById('dl-btn').textContent = 'Download Strip';
   }, 4000);
@@ -757,12 +761,12 @@ async function renderCanvas() {
   ctx.textBaseline = 'middle';
 
   // Calculate block start — push it down into the white space
-  const blockStart = footY + 35;
+  const blockStart = footY + 30;
   const lineH      = 22;  // tight, even spacing between every line
 
   // "Interlinked Photobooth" — Billa Mount
   ctx.fillStyle = '#555';
-  ctx.font      = '400 15px "Billa Mount", serif';
+  ctx.font      = '400 14px "Billa Mount", serif';
   ctx.fillText('Interlinked Photobooth', W / 2, blockStart);
 
   // Session code or "SOLO" — Kommuna
@@ -784,19 +788,18 @@ async function renderCanvas() {
   // Location — Saint Andrews Queen, 15px
   if (st.locationStr) {
     ctx.fillStyle = '#888';
-    ctx.font      = '400 20px "Saint Andrews Queen", serif';
+    ctx.font      = '400 15px "Saint Andrews Queen", serif';
     ctx.fillText(st.locationStr, W / 2, blockStart + lineH * 3);
   }
 }
 
 function downloadStrip() {
-  setTimeout(() => {
-    const c = document.getElementById('cv-render');
-    const a = document.createElement('a');
-    a.download = `interlinked-${S.code || 'solo'}-${S.orient}-${Date.now()}.jpg`;
-    a.href = c.toDataURL('image/jpeg', 0.95);
-    a.click();
-  }, 600);
+  // Canvas is guaranteed ready — renderCanvas() was awaited before enabling this button
+  const c = document.getElementById('cv-render');
+  const a = document.createElement('a');
+  a.download = `interlinked-${S.code || 'solo'}-${S.orient}-${Date.now()}.jpg`;
+  a.href = c.toDataURL('image/jpeg', 0.95);
+  a.click();
 }
 
 /* ── CLEANUP ── */
