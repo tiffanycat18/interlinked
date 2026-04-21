@@ -17,10 +17,7 @@
 
 /* ── Home screen ── */
 #s-home {
-  background:
-    radial-gradient(ellipse at 25% 20%, #b02525 0%, transparent 50%),
-    radial-gradient(ellipse at 75% 80%, #5a0e0e 0%, transparent 50%),
-    #8B1A1A;
+  background: #8B1A1A;
   overflow: hidden;
   height: 100dvh;
   max-height: 100dvh;
