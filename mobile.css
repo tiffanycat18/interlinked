@@ -1,18 +1,20 @@
-/* ── All screens fill full dynamic viewport height ── */
 .screen {
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
 }
 
 /* ── Black screens ── */
-#s-session,
-#s-waiting,
-#s-join,
-#s-orient,
-#s-shoot,
-#s-drop {
-  background: #000;
-  min-height: 100dvh;
+@media (max-width: 480px) {
+  #s-session,
+  #s-waiting,
+  #s-join,
+  #s-orient,
+  #s-shoot,
+  #s-drop {
+    background: #000;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* ── Home screen ── */
@@ -23,7 +25,6 @@
   max-height: 100dvh;
 }
 
-/* ── Fix Kommuna headings — render huge on mobile ── */
 .s-card h2,
 .sess-solo-card h2 {
   font-size: 1rem;
@@ -173,6 +174,19 @@
   .drop-actions .btn {
     font-size: 1.4rem;
     padding: 0.5rem 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #s-session,
+  #s-waiting,
+  #s-join,
+  #s-orient,
+  #s-shoot,
+  #s-drop {
+    background: #000;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
