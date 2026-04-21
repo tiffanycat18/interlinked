@@ -42,6 +42,8 @@ const S = {
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  document.body.style.background = (id === 's-home') ? '#8B1A1A' : '#000000';
+  document.documentElement.style.background = (id === 's-home') ? '#8B1A1A' : '#000000';
 }
 
 function goToSession() {
@@ -858,3 +860,6 @@ function exitShoot() {
   cleanup();
   show('s-home');
 }
+
+document.body.style.background = '#8B1A1A';
+document.documentElement.style.background = '#8B1A1A';
