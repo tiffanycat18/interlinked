@@ -1,16 +1,10 @@
-/* ── GLOBAL: body stays black so no colour bleeds on black screens ── */
-html, body {
-  min-height: 100%;
-  background: #000;
-}
-
 /* ── All screens fill full dynamic viewport height ── */
 .screen {
   width: 100%;
   min-height: 100dvh;
 }
 
-/* ── Black screens are explicitly black ── */
+/* ── Black screens ── */
 #s-session,
 #s-waiting,
 #s-join,
@@ -21,28 +15,13 @@ html, body {
   min-height: 100dvh;
 }
 
-/* ── HOME SCREEN: the only bulletproof fix for mobile Safari gaps ──
-   position:fixed + inset:0 makes the element literally BE the viewport.
-   overflow-y:auto lets content scroll inside it if needed.
-   No gap can exist because the element physically covers everything. ── */
-#s-home.active {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  /* z-index so it sits above body */
-  z-index: 1;
-}
-
-/* When home is not active, reset so it doesn't block other screens */
-#s-home:not(.active) {
-  position: static;
-  height: auto;
+/* ── Home screen ── */
+#s-home {
+  background:
+    radial-gradient(ellipse at 25% 20%, #b02525 0%, transparent 50%),
+    radial-gradient(ellipse at 75% 80%, #5a0e0e 0%, transparent 50%),
+    #8B1A1A;
+  min-height: 100dvh;
 }
 
 /* ── Fix Kommuna headings — render huge on mobile ── */
