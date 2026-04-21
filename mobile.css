@@ -1,228 +1,190 @@
-/* ── Body stays red (home screen colour); black screens override via their own bg ── */
-html, body {
-  min-height: 100%;
-  height: 100%;
-  background: #8B1A1A;       /* matches --red; home screen shows through cleanly */
-}
+@media screen and (max-width: 768px) {
 
-/* Every screen fills the viewport exactly — no gaps for body colour to show */
-.screen {
-  min-height: 100dvh;        /* dvh = dynamic viewport height (respects browser chrome) */
-  width: 100%;
-}
+  /* ─── PREVENT RUBBER-BAND RED BLEED ─── */
+  html, body {
+    height: 100%;
+    overscroll-behavior: none;
+  }
 
-/* Home screen keeps its red gradient */
-#s-home {
-  min-height: 100dvh;
-  background:
-    radial-gradient(ellipse at 25% 20%, #b02525 0%, transparent 50%),
-    radial-gradient(ellipse at 75% 80%, #5a0e0e 0%, transparent 50%),
-    #8B1A1A;
-}
+  /* Black body behind black screens */
+  body:has(#s-session.active),
+  body:has(#s-waiting.active),
+  body:has(#s-join.active),
+  body:has(#s-orient.active),
+  body:has(#s-shoot.active),
+  body:has(#s-drop.active) {
+    background: #000;
+  }
 
-/* All other screens stay full black */
-#s-session,
-#s-waiting,
-#s-join,
-#s-orient,
-#s-shoot,
-#s-drop {
-  min-height: 100dvh;
-  background: #000;
-}
+  /* All screens: fill viewport exactly */
+  .screen {
+    min-height: 100dvh;
+    height: 100dvh;
+  }
 
-/* ── HOME: fit without scrolling ── */
-@media (max-width: 480px) {
+  /* ─────────────────────────────────────────────────
+     HOME SCREEN
+     Root cause of red bleed + overflow:
+     1. padding: 3rem 1rem 5rem → too much vertical space
+     2. .c-plate { margin-top: 50px } → pushes machine down
+     3. .machine-cta { margin-top: 65px } → pushes CTA off screen
+     4. .chrome-int { min-height: 290px } → machine too tall
+     Fix: zero out those specific values, use space-evenly
+  ───────────────────────────────────────────────── */
   #s-home {
-    padding: 1.6rem 1rem 2rem;
-    justify-content: center;
-    gap: 0;
+    padding: 0 1rem;
+    justify-content: space-evenly;
+    align-items: center;
+    overflow: hidden;
   }
 
-  #s-home .eyebrow {
-    margin-bottom: 0.8rem;
-    font-size: 10px;
-  }
-
-  #s-home .enter-tag {
-    font-size: 0.6rem;
-    margin-top: 0.4rem;
-    margin-bottom: 0;
-  }
-
-  /* Shrink the machine so it never pushes content off screen */
-  .chrome-body {
-    width: 158px;
-  }
-
-  .chrome-int {
-    min-height: 220px;
-  }
-
+  /* Remove the 50px gap above the chrome machine plate */
   .c-plate {
-    margin-top: 28px;
-    padding: 8px 18px 7px;
+    margin-top: 0;
   }
 
-  .c-plate-title {
-    font-size: 17px;
-  }
-
+  /* Remove the 65px gap above Enter button */
   .machine-cta {
-    margin-top: 28px;
+    margin-top: 0;
   }
-}
 
-/* ── SESSION (screen 2) + ORIENT (screen 5):
-   already correct layout — just ensure bg is pure black, no gap ── */
-@media (max-width: 480px) {
+  /* The machine interior: override 290px min-height
+     so it scales down to fit shorter phone screens */
+  .chrome-int {
+    min-height: 0;
+    height: clamp(160px, 32vh, 290px);
+  }
+
+  /* ─────────────────────────────────────────────────
+     SESSION SCREEN
+     Root cause: title 2.5rem + line-height:2em ≈ 160px
+     + cards + eyebrow = taller than screen.
+     Content pinned to top so it looks cramped.
+     Fix: center content, reduce title, tighten cards.
+  ───────────────────────────────────────────────── */
   #s-session {
-    padding: 2rem 1rem 2.5rem;
+    padding: env(safe-area-inset-top, 1rem) 1rem
+             env(safe-area-inset-bottom, 1rem) 1rem;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
   }
 
+  .sess-eyebrow {
+    margin-bottom: 1rem;
+  }
+
+  /* Title: was 2.5rem / line-height 2em = ~160px tall.
+     Reduce to readable size that fits with cards below. */
   .sess-title {
     font-size: 2rem;
-    line-height: 1.7em;
-    margin-bottom: 1.4rem;
+    line-height: 1.3em;
+    margin-bottom: 1.2rem;
+  }
+
+  /* Cards: slightly tighter padding */
+  .s-card {
+    padding: 1.2rem 0.8rem;
   }
 
   .s-card h2,
   .sess-solo-card h2 {
-    font-size: 1.75rem;
+    font-size: 1.8rem;
     margin-bottom: 1rem;
+    line-height: 1em;
   }
 
   .s-card p,
   .sess-solo-card p {
     font-size: 0.65rem;
+    line-height: 1.5;
   }
 
-  /* Orient screen */
+  .sess-solo-card {
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+  }
+
+  .sess-solo-card .solo-left {
+    margin-left: 0.5rem;
+  }
+
+  .back-link {
+    margin-top: 0.5rem;
+  }
+
+  /* ─────────────────────────────────────────────────
+     SHOOT SCREEN
+     Camera was showing as wide/horizontal because
+     .cam-stage.vert has aspect-ratio:9/14 which on
+     mobile becomes wider than tall when width=100%.
+     Fix: set explicit portrait height.
+  ───────────────────────────────────────────────── */
+  #s-shoot {
+    padding: env(safe-area-inset-top, 0.5rem) 0.5rem
+             env(safe-area-inset-bottom, 0.5rem) 0.5rem;
+    overflow: hidden;
+  }
+
+  .cam-stage.vert {
+    aspect-ratio: unset;
+    width: 100%;
+    max-width: 100%;
+    height: 52vh;
+  }
+
+  .cam-stage.horiz {
+    aspect-ratio: unset;
+    width: 100%;
+    height: 40vh;
+  }
+
+  /* ─────────────────────────────────────────────────
+     ORIENTATION PICKER
+     margin-top: 50px on both title and sub = overflow
+  ───────────────────────────────────────────────── */
   #s-orient {
-    padding: 2rem 1rem 2rem;
+    padding: env(safe-area-inset-top, 1rem) 1rem
+             env(safe-area-inset-bottom, 1rem) 1rem;
+    justify-content: center;
+    overflow: hidden;
   }
 
   .orient-title {
-    font-size: 2.8rem;
-    line-height: 2.8rem;
-    margin-top: 24px;
+    margin-top: 0;
+    font-size: 2.5rem;
+    line-height: 1.2;
   }
 
   .orient-sub {
-    font-size: 0.7rem;
-    margin-top: 20px;
-    margin-bottom: 1.8rem;
-  }
-}
-
-/* ── SHOOT (screen 6): buttons cut off fix ── */
-@media (max-width: 480px) {
-  #s-shoot {
-    padding: 0.8rem 0.75rem 1rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1.2rem;
   }
 
-  .shoot-inner {
-    gap: 0;
+  .orient-grid {
+    margin-bottom: 1.2rem;
   }
 
-  /* Shrink prompt text slightly */
-  .prompt-blk {
-    padding: 0.65rem 1rem;
+  /* ─── WAITING + JOIN ─── */
+  #s-waiting,
+  #s-join {
+    padding: env(safe-area-inset-top, 1rem) 1rem
+             env(safe-area-inset-bottom, 1rem) 1rem;
+    overflow: hidden;
   }
 
-  .prompt-txt {
-    font-size: 0.72rem;
-  }
-
-  .prompt-sub {
-    font-size: 0.62rem;
-  }
-
-  /* Make buttons readable but compact */
-  .shoot-ctrls .btn {
-    font-size: 1.45rem;
-    padding: 0.5rem 1.4rem;
-  }
-
-  .sync-bar {
-    font-size: 8px;
-    gap: 0.9rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .prog-track {
-    margin-bottom: 0.5rem;
-  }
-}
-
-/* ── DROP / STRIP (screen 7): fit without scroll ── */
-@media (max-width: 480px) {
+  /* ─── DROP SCREEN: strip is taller than screen, must scroll ─── */
   #s-drop {
-    padding: 0 0.75rem 1.5rem;
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
   }
 
-  .drop-machine {
-    padding-top: 1rem;
+  /* ─── iOS INPUT ZOOM PREVENTION ─── */
+  .join-input {
+    font-size: max(16px, 3rem);
   }
 
-  /* Slightly smaller chrome */
-  .drop-chrome {
-    width: 188px;
-  }
-
-  .drop-slot-body {
-    height: 110px;
-  }
-
-  /* Narrower hanging strip */
-  .strip-exit-zone {
-    width: 188px;
-  }
-
-  #strip-hang {
-    width: 140px;
-  }
-
-  /* Compact action buttons */
-  .drop-actions {
-    margin-top: 1.2rem;
-    gap: 0.4rem;
-  }
-
-  .drop-actions .btn {
-    font-size: 1.4rem;
-    padding: 0.5rem 1.2rem;
-  }
-}
-
-/* ── Fallback for very short screens (e.g. iPhone SE) ── */
-@media (max-width: 390px) and (max-height: 700px) {
-  #s-home {
-    padding: 1rem 0.75rem 1.2rem;
-  }
-
-  .chrome-body {
-    width: 140px;
-  }
-
-  .chrome-int {
-    min-height: 180px;
-  }
-
-  .c-plate-title {
-    font-size: 15px;
-  }
-
-  .machine-cta {
-    margin-top: 16px;
-  }
-
-  .orient-title {
-    font-size: 2.2rem;
-    line-height: 2.3rem;
-  }
-
-  .sess-title {
-    font-size: 1.7rem;
-  }
 }
