@@ -244,10 +244,10 @@ html, body {
   max-height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  /* extend gradient into safe areas */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-top: max(3rem, env(safe-area-inset-top));
+  padding-bottom: max(5rem, env(safe-area-inset-bottom));
 }
+
 .eyebrow {
   font-family: 'Kommuna';
   font-size: 12px;
@@ -418,6 +418,11 @@ html, body {
 }
 
 /* ── SESSION ── */
+#s-session, #s-waiting, #s-join, #s-orient, #s-shoot, #s-drop {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 #s-session {
   background: #000;
   align-items: center;
