@@ -178,7 +178,7 @@ html, body {
   height: 100%;
   max-height: 100%;
   font-family: 'Kommuna';
-  background: #000;
+  background: var(--red);
   color: var(--ink);
   overflow: hidden;
   overscroll-behavior: none;
