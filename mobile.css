@@ -21,7 +21,9 @@
     radial-gradient(ellipse at 25% 20%, #b02525 0%, transparent 50%),
     radial-gradient(ellipse at 75% 80%, #5a0e0e 0%, transparent 50%),
     #8B1A1A;
-  min-height: 100dvh;
+  overflow: hidden;
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 /* ── Fix Kommuna headings — render huge on mobile ── */
