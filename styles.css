@@ -174,20 +174,20 @@
   --ink: #f0ece4;
 }
 
-html,
-body {
+html, body {
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+  max-height: 100%;
   font-family: 'Kommuna';
   background: #000;
   color: var(--ink);
-  overflow-x: hidden;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
-
 .screen {
   display: none;
   width: 100%;
-  min-height: 100vh;
+  height: 100dvh;
   flex-direction: column;
 }
 
@@ -240,6 +240,9 @@ body {
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem 5rem;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
 }
 
 .eyebrow {
@@ -417,6 +420,8 @@ body {
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem;
+  overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .sess-box {
@@ -1075,6 +1080,8 @@ body {
   background: #000;
   align-items: center;
   padding: 0 1rem 3rem;
+  overflow-y: auto;
+  overscroll-behavior: none;
 }
 
 .drop-inner {
