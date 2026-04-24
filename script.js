@@ -381,7 +381,6 @@ function kick() {
       if (S.isHost || !S.isDuet) send({ type: 'countdown', n });
     } else {
       clearInterval(iv);
-      showCD('✦');
       if (S.isHost || !S.isDuet) send({ type: 'capture-now' });
       doFlash();
       captureMe();
@@ -395,10 +394,6 @@ function showCD(n) {
   el.classList.remove('show');
 
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
-
-  if (n === '✦') {
-    setTimeout(() => el.classList.remove('show'), 700);
-  }
 }
 
 function doFlash() {
@@ -498,7 +493,7 @@ function simFrame(ctx, cnv, idx) {
   }
 
   ctx.fillStyle = '#252525';
-  ctx.font = 'italic 300 54px Cormorant Garamond,serif';
+  ctx.font = '400 54px Kommuna,serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(['I', 'II', 'III', 'IV'][idx] || '·', cnv.width / 2, cnv.height / 2);
@@ -601,7 +596,7 @@ function makeStrip(w, fh, stamp) {
   stamp = stamp || S.stamp || {};
   const isVert = S.orient === 'vert';
   const isDuo = S.isDuet;
-  let html = `<div class="strip-paper" style="width:${w}px">`;
+  let html = `<div class="strip-paper" style="width:${w}px;box-sizing:border-box;overflow:hidden;">`;
 
   for (let i = 0; i < 4; i++) {
     const y = S.photosYou[i] || '';
@@ -633,11 +628,27 @@ function makeStrip(w, fh, stamp) {
 
   const timeDate = [stamp.timeStr, stamp.dateStr].filter(Boolean).join('  ·  ');
   const location = stamp.locationStr || '';
-  html += `<div class="strip-foot">INTERLINKED · ${S.code || ''}</div>`;
 
-  if (timeDate || location) {
-    html += `<div class="strip-stamp">${timeDate}${location ? '<br>' + location : ''}</div>`;
-  }
+  // Footer sized to match the downloaded canvas visually.
+  // The hang strip (w=158) and travel strip (w=98) are small HTML elements.
+  // We use fixed small px values that fit cleanly at 158px — the same ratio
+  // as the canvas (14px title at 360px wide → 6px at 158px), but floored at
+  // legible minimums and tested to fit "Interlinked Photobooth" on one line.
+  const s = w / 158; // scale relative to the hang width (the larger of the two)
+  const fTitle = Math.round(6.2 * s);
+  const fCode  = Math.round(4.8 * s);
+  const fTime  = Math.round(5.7 * s);
+  const fLoc   = Math.round(6.5 * s);
+  const pad    = Math.round(4   * s);
+  const gap    = Math.round(2   * s);
+
+  html += `
+    <div style="border-top:.5px solid #ccc;margin-top:2px;padding:${pad * 2}px 3px ${pad}px;text-align:center;background:var(--cream,#f5f0e8);display:flex;flex-direction:column;align-items:center;gap:${gap}px;width:${w}px;box-sizing:border-box;">
+      <div style="font-family:'Billa Mount',serif;font-size:${fTitle}px;color:#555;letter-spacing:.04em;line-height:1.5;white-space:nowrap;max-width:100%;">Interlinked Photobooth</div>
+      <div style="font-family:'Kommuna',monospace;font-size:${fCode}px;color:#999;letter-spacing:.2em;white-space:nowrap;">${S.code || 'SOLO'}</div>
+      ${timeDate ? `<div style="font-family:'Kommuna',monospace;font-size:${fTime}px;font-style:italic;color:#888;white-space:nowrap;max-width:100%;">${timeDate}</div>` : ''}
+      ${location ? `<div style="font-family:'Saint Andrews Queen',serif;font-size:${fLoc}px;color:#888;white-space:nowrap;">${location}</div>` : ''}
+    </div>`;
 
   html += `</div>`;
   return html;
