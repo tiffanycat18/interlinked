@@ -35,7 +35,9 @@ const S = {
   youReady: false,
   partnerReady: false,
   orient: 'vert',
-  stamp: null
+  stamp: null,
+  // ── FIX Bug 1: guard flag so advance() can only fire once per frame ──
+  _advancing: false
 };
 
 /* ── NAV ── */
@@ -283,6 +285,8 @@ async function beginShoot() {
   S.photosPartner = [];
   S.youReady = false;
   S.partnerReady = false;
+  // ── FIX Bug 1: reset advance guard at start of every shoot ──
+  S._advancing = false;
 
   applyOrientToStage();
   show('s-shoot');
@@ -337,6 +341,8 @@ function setPrompt(i) {
 
   S.youReady = false;
   S.partnerReady = false;
+  // ── FIX Bug 1: reset guard for each new frame ──
+  S._advancing = false;
 
   for (let j = 0; j < 4; j++) {
     document.getElementById('ps' + j).className = 'ps' + (j < i ? ' done' : j === i ? ' cur' : '');
@@ -434,18 +440,31 @@ function captureMe() {
   checkNext();
 }
 
+// ── FIX Bug 1: checkNext is now the single, guarded gate to advance() ──
+// It snapshots the frame index it's checking so that a late-arriving
+// network photo for frame N can't accidentally advance frame N+1.
 function checkNext() {
-  // Wait until BOTH your photo AND partner's photo for this index exist
-  // S.idx is the current frame (0-3). We need length > S.idx meaning
-  // index S.idx has been filled (length becomes idx+1 after push).
-  const youDone     = S.photosYou.length > S.idx;
-  const partnerDone = !S.isDuet || S.photosPartner.length > S.idx;
-  if (youDone && partnerDone) setTimeout(advance, 380);
+  // Capture the index we're evaluating right now.
+  const frameIdx = S.idx;
+
+  // Both arrays must have an entry for frameIdx before we proceed.
+  const youDone     = S.photosYou.length     > frameIdx;
+  const partnerDone = !S.isDuet || S.photosPartner.length > frameIdx;
+
+  if (!youDone || !partnerDone) return;
+
+  // Guard: only let one caller win the race for this frame.
+  // _advancing is reset to false in setPrompt() (next frame) and beginShoot().
+  if (S._advancing) return;
+  S._advancing = true;
+
+  setTimeout(advance, 380);
 }
 
 async function advance() {
   S.idx++;
   if (S.idx < 4) {
+    // setPrompt resets S._advancing = false for the next frame
     setPrompt(S.idx);
   } else {
     if (S.localStream) S.localStream.getTracks().forEach(t => t.stop());
@@ -527,6 +546,12 @@ async function getStamp() {
 }
 
 /* ── STRIP DROP ── */
+// ── FIX Bug 2: runDrop is now a clean async pipeline.
+//    1. show screen immediately
+//    2. kick off stamp fetch and strip animation in parallel
+//    3. await stamp before building the travel strip HTML (so it's never blank)
+//    4. renderCanvas() is awaited *after* the 4 s animation, then dl-btn is enabled.
+//    The dl-btn is only enabled once renderCanvas resolves — no race condition.
 async function runDrop() {
   show('s-drop');
 
@@ -542,20 +567,20 @@ async function runDrop() {
   document.getElementById('dl-btn').disabled = true;
   document.getElementById('dl-btn').textContent = 'Developing…';
 
-  const stampPromise = getStamp();
-
-  const isVert = S.orient === 'vert';
-  const slotW = isVert ? 98 : 138;
-  const slotFH = isVert ? 86 : 56;
-  const hangW = isVert ? 158 : 198;
-  const hangFH = isVert ? 132 : 88;
-
-  const stamp = await stampPromise;
+  // ── Await stamp BEFORE building HTML so both travel + hang strips have it ──
+  const stamp = await getStamp();
   S.stamp = stamp;
 
-  travelWrap.innerHTML = makeStrip(slotW, slotFH, stamp);
-  hang.innerHTML = makeStrip(hangW, hangFH, stamp);
+  const isVert = S.orient === 'vert';
+  const slotW  = isVert ? 98  : 138;
+  const slotFH = isVert ? 86  : 56;
+  const hangW  = isVert ? 158 : 198;
+  const hangFH = isVert ? 132 : 88;
 
+  travelWrap.innerHTML = makeStrip(slotW, slotFH, stamp);
+  hang.innerHTML       = makeStrip(hangW, hangFH, stamp);
+
+  // Force reflow so the CSS transition fires correctly
   travelWrap.getBoundingClientRect();
 
   requestAnimationFrame(() => {
@@ -565,12 +590,11 @@ async function runDrop() {
 
   setTimeout(() => hang.classList.add('show'), 3800);
 
-  // Wait for animation to finish, then render canvas and enable download
-  setTimeout(async () => {
-    await renderCanvas();
-    document.getElementById('dl-btn').disabled = false;
-    document.getElementById('dl-btn').textContent = 'Download Strip';
-  }, 4000);
+  // Wait for the strip animation to finish, render the download canvas, then unlock.
+  await new Promise(res => setTimeout(res, 4000));
+  await renderCanvas();
+  document.getElementById('dl-btn').disabled = false;
+  document.getElementById('dl-btn').textContent = 'Download Strip';
 }
 
 function makeStrip(w, fh, stamp) {
@@ -671,7 +695,7 @@ async function renderCanvas() {
   const FH   = isVert ? Math.round(FW * 1.1) : Math.round(FW * 0.56);
   const GAP  = 4;
   const PADY = 36;
-  const FOOT = 130;  // enough whitespace for 4 footer lines
+  const FOOT = 130;
 
   const H = PADY + 4 * (FH + GAP) - GAP + FOOT;
 
@@ -681,11 +705,9 @@ async function renderCanvas() {
 
   const ctx = c.getContext('2d');
 
-  // Cream paper background
   ctx.fillStyle = '#f5f0e8';
   ctx.fillRect(0, 0, W, H);
 
-  // ── Helper: load image ──
   const loadImg = src => new Promise(res => {
     if (!src) { res(null); return; }
     const img   = new Image();
@@ -694,7 +716,6 @@ async function renderCanvas() {
     img.src     = src;
   });
 
-  // ── Helper: B&W offscreen canvas with cover crop ──
   const bwc = (img, w, h) => {
     const cc  = document.createElement('canvas');
     cc.width  = w;
@@ -712,7 +733,6 @@ async function renderCanvas() {
     return cc;
   };
 
-  // ── Draw 4 frames ──
   for (let i = 0; i < 4; i++) {
     const fy = PADY + i * (FH + GAP);
 
@@ -749,7 +769,6 @@ async function renderCanvas() {
     }
   }
 
-  // ── Footer separator ──
   const footY = PADY + 4 * (FH + GAP);
   ctx.strokeStyle = '#ccc';
   ctx.lineWidth   = 0.5;
@@ -762,21 +781,17 @@ async function renderCanvas() {
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
 
-  // Calculate block start — push it down into the white space
   const blockStart = footY + 30;
-  const lineH      = 22;  // tight, even spacing between every line
+  const lineH      = 22;
 
-  // "Interlinked Photobooth" — Billa Mount
   ctx.fillStyle = '#555';
   ctx.font      = '400 14px "Billa Mount", serif';
   ctx.fillText('Interlinked Photobooth', W / 2, blockStart);
 
-  // Session code or "SOLO" — Kommuna
   ctx.fillStyle = '#999';
   ctx.font      = '400 11px Kommuna';
   ctx.fillText(S.code || 'SOLO', W / 2, blockStart + lineH);
 
-  // Time · Date — Kommuna italic
   if (st.timeStr || st.dateStr) {
     ctx.fillStyle = '#888';
     ctx.font      = 'italic 400 13px Kommuna';
@@ -787,7 +802,6 @@ async function renderCanvas() {
     );
   }
 
-  // Location — Saint Andrews Queen, 15px
   if (st.locationStr) {
     ctx.fillStyle = '#888';
     ctx.font      = '400 15px "Saint Andrews Queen", serif';
@@ -796,7 +810,6 @@ async function renderCanvas() {
 }
 
 function downloadStrip() {
-  // Canvas is guaranteed ready — renderCanvas() was awaited before enabling this button
   const c = document.getElementById('cv-render');
   const a = document.createElement('a');
   a.download = `interlinked-${S.code || 'solo'}-${S.orient}-${Date.now()}.jpg`;
@@ -829,6 +842,7 @@ function reshoot() {
   S.idx = 0;
   S.photosYou = [];
   S.photosPartner = [];
+  S._advancing = false;
 
   ['vid-you', 'vid-partner'].forEach(id => {
     const v = document.getElementById(id);
