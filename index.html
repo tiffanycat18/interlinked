@@ -52,7 +52,7 @@
         <div class="s-card" onclick="createSession()">
           <div class="sn"></div>
           <h2>Create <br> Session</h2>
-          <p>Begin together. You will receive a code. Send it to the person you’re thinking of.</p>
+          <p>Begin together. You will receive a code. Send it to the person you're thinking of.</p>
         </div>
         <div class="s-card" onclick="show('s-join')">
           <div class="sn"></div>
@@ -140,13 +140,7 @@
   <div id="s-shoot" class="screen">
     <div class="shoot-inner">
 
-      <div class="prog-track">
-        <div class="ps cur" id="ps0"></div>
-        <div class="ps" id="ps1"></div>
-        <div class="ps" id="ps2"></div>
-        <div class="ps" id="ps3"></div>
-      </div>
-
+      <!-- Sync bar — floats at top via absolute positioning in CSS -->
       <div class="sync-bar" id="sync-bar">
         <span class="sync-dot" id="sync-you"></span>
         <span>You</span>
@@ -155,37 +149,78 @@
         <span class="sync-dot" id="sync-partner"></span>
       </div>
 
-      <!-- Camera — class set by JS based on orientation + solo/duet -->
-      <div class="cam-stage horiz" id="cam-stage">
-        <div class="cam-half left" id="cam-left">
-          <div class="cam-lbl l" id="lbl-you">You</div>
-          <div class="cam-ph" id="ph-you"><div class="cam-ph-txt">Camera loading…</div></div>
-          <video id="vid-you" autoplay playsinline muted style="display:none"></video>
-        </div>
-        <div class="cam-half right" id="cam-right">
-          <div class="cam-lbl r" id="lbl-partner">Partner</div>
-          <div class="cam-ph" id="ph-partner"><div class="cam-ph-txt">Waiting…</div></div>
-          <video id="vid-partner" autoplay playsinline muted style="display:none"></video>
-        </div>
-        <div class="cam-div" id="cam-div"></div>
-        <div class="red-thread" id="red-thread"></div>
-        <div class="cd-stage"><div class="cd-dig" id="cd-dig">3</div></div>
-        <div class="flash-veil" id="flash-veil"></div>
-        <div class="live-badge" id="live-badge"></div>
+      <!-- Studio light bar -->
+      <div class="shoot-light-bar">
+        <div class="shoot-light-glow"></div>
       </div>
 
-      <div class="prompt-blk">
-        <div class="prompt-act" id="p-act">Act I</div>
-        <div>
-          <div class="prompt-txt" id="p-txt">Look into the lens.</div>
-          <div class="prompt-sub" id="p-sub">Keep it simple.</div>
-        </div>
+      <!-- Progress bar — full width of camera column -->
+      <div class="prog-track">
+        <div class="ps cur" id="ps0"></div>
+        <div class="ps" id="ps1"></div>
+        <div class="ps" id="ps2"></div>
+        <div class="ps" id="ps3"></div>
       </div>
 
+      <!-- Three-column row: eye level | camera | instructions -->
+      <div class="shoot-row">
+
+        <!-- LEFT: eye level -->
+        <div class="shoot-side shoot-side-left">
+          <div class="shoot-eye-level">
+            <span class="shoot-eye-txt">Eye level</span>
+            <div class="shoot-eye-arrow"></div>
+          </div>
+        </div>
+
+        <!-- CENTER: camera stage — all original IDs preserved -->
+        <div class="shoot-center">
+          <div class="cam-stage horiz" id="cam-stage">
+            <div class="cam-half left" id="cam-left">
+              <div class="cam-lbl l" id="lbl-you">You</div>
+              <div class="cam-ph" id="ph-you"><div class="cam-ph-txt">Camera loading…</div></div>
+              <video id="vid-you" autoplay playsinline muted style="display:none"></video>
+            </div>
+            <div class="cam-half right" id="cam-right">
+              <div class="cam-lbl r" id="lbl-partner">Partner</div>
+              <div class="cam-ph" id="ph-partner"><div class="cam-ph-txt">Waiting…</div></div>
+              <video id="vid-partner" autoplay playsinline muted style="display:none"></video>
+            </div>
+            <div class="cam-div" id="cam-div"></div>
+            <div class="red-thread" id="red-thread"></div>
+            <div class="cd-stage"><div class="cd-dig" id="cd-dig">3</div></div>
+            <div class="flash-veil" id="flash-veil"></div>
+            <div class="live-badge" id="live-badge"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: prompt instructions -->
+        <div class="shoot-side shoot-side-right" id="shoot-instructions">
+          <div class="prompt-act" id="p-act">Act I</div>
+          <div class="shoot-prompt-sub" id="p-sub">Keep it simple</div>
+          <div class="shoot-prompt-txt" id="p-txt">Look into the lens.
+Relax your face.</div>
+        </div>
+
+      </div><!-- /shoot-row -->
+
+      <!-- Controls -->
       <div class="shoot-ctrls">
         <button class="btn" id="cap-btn" onclick="onCapture()">Take Photo</button>
         <button class="btn ghost" onclick="exitShoot()">Exit</button>
       </div>
+
+      <!-- Instructions toggle -->
+      <div class="shoot-toggle">
+        <label class="shoot-toggle-label">
+          <input type="checkbox" checked onchange="toggleInstructions(this.checked)">
+          <span>Show instructions</span>
+        </label>
+      </div>
+
+      <!-- Hidden prompt-blk kept for script.js compatibility -->
+      <div class="prompt-blk" style="display:none !important"></div>
+
     </div>
   </div>
 
@@ -204,7 +239,6 @@
           <div class="drop-slot-body">
             <div class="rail"></div>
             <div class="drop-channel">
-              <!-- strip travels DOWN through this slot window -->
               <div id="strip-travel-wrap"></div>
             </div>
             <div class="rail"></div>
@@ -212,12 +246,12 @@
         </div>
       </div>
 
-      <!-- Strip hangs out below the machine — normal flow, no overlap -->
+      <!-- Strip hangs out below the machine -->
       <div class="strip-exit-zone">
         <div id="strip-hang"></div>
       </div>
 
-      <!-- Action buttons — always below everything -->
+      <!-- Action buttons -->
       <div class="drop-actions">
         <button class="btn" id="dl-btn" onclick="downloadStrip()" disabled>Developing…</button>
         <button class="btn ghost" onclick="reshoot()">Reshoot</button>

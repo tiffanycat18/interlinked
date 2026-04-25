@@ -184,7 +184,6 @@ html, body {
   overscroll-behavior: none;
 }
 
-/* ── ONLY CHANGE: added display:none and flex-direction:column ── */
 .screen {
   display: none;
   width: 100%;
@@ -207,7 +206,7 @@ html, body {
   padding: .62rem 2rem;
   cursor: pointer;
   transition: all .2s;
-  margin: .35rem;
+  margin: 0.5rem;
 }
 
 .btn:hover {
@@ -612,12 +611,8 @@ html, body {
 }
 
 @keyframes blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: .12;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: .12; }
 }
 
 /* ── JOIN ── */
@@ -708,7 +703,6 @@ html, body {
   background: #0a0a0a;
 }
 
-/* Frame preview icons */
 .orient-preview {
   display: flex;
   gap: 4px;
@@ -721,15 +715,8 @@ html, body {
   flex-shrink: 0;
 }
 
-.orient-preview .fp.h {
-  width: 44px;
-  height: 30px;
-} /* landscape */
-
-.orient-preview .fp.v {
-  width: 26px;
-  height: 40px;
-} /* portrait */
+.orient-preview .fp.h { width: 44px; height: 30px; }
+.orient-preview .fp.v { width: 26px; height: 40px; }
 
 .orient-label {
   font-family: 'Kommuna';
@@ -745,55 +732,49 @@ html, body {
   line-height: 1.5;
 }
 
-/* ── SHOOT ── */
+/* ════════════════════════════════════════════════════
+   SHOOT SCREEN
+   Layout: sync-bar (absolute top) → light bar →
+           progress bar → [eye-level | camera | prompts] →
+           buttons → checkbox
+   ════════════════════════════════════════════════════ */
+
 #s-shoot {
   background: #000;
   align-items: center;
-  padding: 1.5rem 1rem 2rem;
+  justify-content: center;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
 }
 
 .shoot-inner {
   width: 100%;
-  max-width: 720px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  height: 100%;
+  position: relative;
 }
 
-.prog-track {
-  width: 100%;
-  display: flex;
-  gap: 3px;
-  margin-bottom: .8rem;
-}
-
-.ps {
-  flex: 1;
-  height: 1px;
-  background: #181818;
-  transition: background .4s;
-}
-
-.ps.done {
-  background: var(--ink);
-}
-
-.ps.cur {
-  background: #444;
-}
-
+/* Sync bar — floats at very top */
 .sync-bar {
-  width: 100%;
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 1.2rem;
-  margin-bottom: .8rem;
   font-family: 'Kommuna';
   font-size: 9px;
   letter-spacing: .3em;
   color: #252525;
   text-transform: uppercase;
+  z-index: 20;
+  pointer-events: none;
 }
 
 .sync-dot {
@@ -808,21 +789,142 @@ html, body {
   background: var(--ink);
 }
 
-/* Camera stage — adapts to orientation */
+/* Studio light bar — shorter than progress bar by 3/4 segment each side.
+   Progress bar = 720px, 4 segments → 1 segment = 180px, 3/4 = 135px each side.
+   So light width = 720 - 270 = 450px. Slightly taller than before. */
+.shoot-light-bar {
+  width: 550px;
+  max-width: 65vw;
+  background: linear-gradient(
+    to bottom,
+    #696868 0%, #b5b5b5 18%, #f0f0f0 40%, #ebebeb 60%, #aeaeae 82%, #686767 100%
+  );
+  padding: 7px 9px;
+  margin-bottom: 2.4rem; /* 2-3× the previous .8rem gap → ~3× */
+  flex-shrink: 0;
+}
+
+.shoot-light-glow {
+  height: 48px;
+  background: radial-gradient(
+    ellipse 70% 100% at 50% 50%,
+    #ffffff   0%,
+    #ffffff   22%,
+    #fffffb   42%,
+    #fffef2   60%,
+    #fffce8   76%,
+    rgba(255, 252, 220, 0.4) 90%,
+    rgba(255, 252, 220, 0)  100%
+  );
+  border-radius: 3px;
+}
+
+/* Progress bar — full camera column width */
+.prog-track {
+  width: 720px;
+  max-width: 90vw;
+  display: flex;
+  gap: 3px;
+  margin-bottom: 2.4rem; /* 2-3× the previous .8rem → same gap to camera */
+  flex-shrink: 0;
+}
+
+.ps {
+  flex: 1;
+  height: 1px;
+  background: #181818;
+  transition: background .4s;
+}
+
+.ps.done { background: var(--ink); }
+.ps.cur  { background: #444; }
+
+/* Three-column row */
+.shoot-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 0;
+}
+
+/* Side panels — fixed width so camera stays truly centered */
+.shoot-side {
+  width: 160px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.shoot-side-left {
+  align-items: flex-end;
+  padding-right: 16px;
+}
+
+.shoot-side-right {
+  align-items: flex-start;
+  padding-left: 16px;
+}
+
+/* Eye level (left panel) */
+.shoot-eye-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.shoot-eye-txt {
+  font-family: 'Kommuna';
+  text-transform: uppercase;
+  font-size: 9px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.shoot-eye-arrow {
+  width: 80px;
+  height: 1px;
+  background: #fff;
+  position: relative;
+  align-self: stretch;
+}
+
+.shoot-eye-arrow::after {
+  content: '';
+  position: absolute;
+  right: -1px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid #fff;
+  border-top: 1.5px solid #fff;
+  transform: rotate(45deg);
+}
+
+/* Center camera column */
+.shoot-center {
+  flex-shrink: 0;
+  width: 620px;
+  max-width: calc(100vw - 320px); /* leave room for side panels */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Camera stage — identical rules to original */
 .cam-stage {
   position: relative;
   overflow: hidden;
   background: #060606;
-  border: 1px solid #111;
-}
-
-/* Horizontal: wide */
-.cam-stage.horiz {
+  border: transparent;
   width: 100%;
-  aspect-ratio: 16/9;
 }
 
-/* Vertical: portrait, narrower */
+.cam-stage.horiz { aspect-ratio: 16/9; }
+
 .cam-stage.vert {
   width: 100%;
   max-width: 360px;
@@ -835,35 +937,13 @@ html, body {
   overflow: hidden;
 }
 
-/* Horizontal halves sit side by side */
-.cam-stage.horiz .cam-half {
-  top: 0;
-  bottom: 0;
-  width: 50%;
-}
+.cam-stage.horiz .cam-half { top: 0; bottom: 0; width: 50%; }
+.cam-stage.horiz .cam-half.left  { left: 0; }
+.cam-stage.horiz .cam-half.right { right: 0; }
 
-.cam-stage.horiz .cam-half.left {
-  left: 0;
-}
-
-.cam-stage.horiz .cam-half.right {
-  right: 0;
-}
-
-/* Vertical halves stack top/bottom */
-.cam-stage.vert .cam-half {
-  left: 0;
-  right: 0;
-  height: 50%;
-}
-
-.cam-stage.vert .cam-half.left {
-  top: 0;
-}
-
-.cam-stage.vert .cam-half.right {
-  bottom: 0;
-}
+.cam-stage.vert .cam-half { left: 0; right: 0; height: 50%; }
+.cam-stage.vert .cam-half.left  { top: 0; }
+.cam-stage.vert .cam-half.right { bottom: 0; }
 
 .cam-half video {
   width: 100%;
@@ -873,13 +953,8 @@ html, body {
   filter: grayscale(100%) contrast(1.25) brightness(.92);
 }
 
-.cam-stage.horiz .cam-half.left video {
-  transform: scaleX(-1);
-}
-
-.cam-stage.vert .cam-half.left video {
-  transform: scaleX(-1);
-}
+.cam-stage.horiz .cam-half.left video { transform: scaleX(-1); }
+.cam-stage.vert  .cam-half.left video { transform: scaleX(-1); }
 
 .cam-ph {
   width: 100%;
@@ -908,29 +983,11 @@ html, body {
   z-index: 12;
 }
 
-/* Horiz labels */
-.cam-stage.horiz .cam-lbl.l {
-  top: 10px;
-  left: 12px;
-}
+.cam-stage.horiz .cam-lbl.l { top: 10px; left: 12px; }
+.cam-stage.horiz .cam-lbl.r { top: 10px; right: 12px; }
+.cam-stage.vert  .cam-lbl.l { top: 10px; left: 12px; }
+.cam-stage.vert  .cam-lbl.r { bottom: calc(50% + 10px); left: 12px; }
 
-.cam-stage.horiz .cam-lbl.r {
-  top: 10px;
-  right: 12px;
-}
-
-/* Vert labels */
-.cam-stage.vert .cam-lbl.l {
-  top: 10px;
-  left: 12px;
-}
-
-.cam-stage.vert .cam-lbl.r {
-  bottom: calc(50% + 10px);
-  left: 12px;
-}
-
-/* Divider */
 .cam-div {
   position: absolute;
   background: #000;
@@ -938,58 +995,33 @@ html, body {
 }
 
 .cam-stage.horiz .cam-div {
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  transform: translateX(-50%);
+  left: 50%; top: 0; bottom: 0; width: 1px; transform: translateX(-50%);
 }
 
 .cam-stage.vert .cam-div {
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  transform: translateY(-50%);
+  top: 50%; left: 0; right: 0; height: 1px; transform: translateY(-50%);
 }
 
-.red-thread {
-  position: absolute;
-  z-index: 11;
-}
+.red-thread { position: absolute; z-index: 11; }
 
 .cam-stage.horiz .red-thread {
-  left: 50%;
-  top: 18%;
-  height: 64%;
-  width: 1px;
+  left: 50%; top: 18%; height: 64%; width: 1px;
   transform: translateX(-50%);
   background: linear-gradient(to bottom, transparent, rgba(139, 26, 26, .6) 25%, rgba(139, 26, 26, .6) 75%, transparent);
 }
 
 .cam-stage.vert .red-thread {
-  top: 50%;
-  left: 18%;
-  width: 64%;
-  height: 1px;
+  top: 50%; left: 18%; width: 64%; height: 1px;
   transform: translateY(-50%);
   background: linear-gradient(to right, transparent, rgba(139, 26, 26, .6) 25%, rgba(139, 26, 26, .6) 75%, transparent);
 }
 
-/* Solo: hide right half, full width */
 .cam-stage.solo .cam-half.left {
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  bottom: auto;
-  right: auto;
+  width: 100%; height: 100%; top: 0; left: 0; bottom: auto; right: auto;
 }
 
 .cam-stage.solo .cam-div,
-.cam-stage.solo .red-thread {
-  display: none;
-}
+.cam-stage.solo .red-thread { display: none; }
 
 .cd-stage {
   position: absolute;
@@ -1012,10 +1044,7 @@ html, body {
   transition: opacity .12s, transform .12s;
 }
 
-.cd-dig.show {
-  opacity: 1;
-  transform: scale(1);
-}
+.cd-dig.show { opacity: 1; transform: scale(1); }
 
 .flash-veil {
   position: absolute;
@@ -1027,9 +1056,7 @@ html, body {
   transition: opacity .04s;
 }
 
-.flash-veil.flash {
-  opacity: .95;
-}
+.flash-veil.flash { opacity: .95; }
 
 .live-badge {
   position: absolute;
@@ -1043,50 +1070,84 @@ html, body {
   text-transform: uppercase;
 }
 
-.prompt-blk {
-  width: 100%;
-  background: #050505;
-  border: 1px solid #0f0f0f;
-  border-top: none;
-  padding: 1rem 1.4rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 1.2rem;
-  margin-bottom: .5rem;
-}
-
+/* Prompt text (right panel) */
 .prompt-act {
   font-family: 'Kommuna';
   font-size: 9px;
   letter-spacing: .4em;
   color: #a6a5a5;
   text-transform: uppercase;
-  flex-shrink: 0;
-  padding-top: .2rem;
+  margin-bottom: 6px;
 }
 
-.prompt-txt {
-  font-size: 0.78rem;
-  font-style: italic;
-  font-weight: 300;
-  line-height: 1.35;
+.shoot-prompt-sub {
+  font-family: 'Kommuna';
+  font-size: 13px;
+  letter-spacing: .14em;
+  color: var(--ink);
+  text-transform: uppercase;
+  line-height: 1.25;
+  margin-bottom: 8px;
+}
+
+.shoot-prompt-txt {
+  font-family: 'Kommuna';
+  font-size: 11px;
+  color: #a6a5a5;
+  line-height: 1.5;
   white-space: pre-line;
 }
 
-.prompt-sub {
-  font-size: .67rem;
-  color: #a6a5a5;
-  margin-top: .35rem;
+/* Hidden state when checkbox unchecked */
+.shoot-side-right.shoot-hidden {
+  visibility: hidden;
 }
 
+/* Controls — gap matches original (generous space below camera) */
 .shoot-ctrls {
   width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-wrap: wrap;
-  margin-top: .5rem;
+  margin-top: 1.8rem;
 }
+
+/* Instructions toggle */
+.shoot-toggle {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.shoot-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-family: 'Kommuna';
+  font-size: 9px;
+  letter-spacing: .05em;
+  color: #c5c5c5;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+}
+
+.shoot-toggle-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #333;
+  background: #c5c5c5;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.shoot-toggle-label input[type="checkbox"]:checked { background: #444; }
+
+/* prompt-blk hidden (legacy compat) */
+.prompt-blk { display: none !important; }
 
 /* ── STRIP DROP SCREEN ── */
 #s-drop {
